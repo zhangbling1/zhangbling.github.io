@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!DOCTYPE html> 
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
@@ -24,7 +24,7 @@
     <div class="ui-layer">
         <header>
             <h1>Antigravity</h1>
-            <p class="subtitle">Pure Radial Diffusion</p>
+            <p class="subtitle">Pure Radial Diffusion — Jelly / silky motion</p>
         </header>
     </div>
 
@@ -32,42 +32,53 @@
 
     <script>
         /**
-         * 🌊 Google Antigravity V5: Pure Radial Diffusion (纯圆形扩散)
-         * 核心目标：消除所有"震颤"，实现完美的圆形推开效果。
+         * 改进版本：水母式丝滑动效
+         * - phase-driven motion (低频呼吸)
+         * - smooth inertial return (lerp + friction)
+         * - Poisson Disk 保持均匀分布
+         * - soft glow via radial gradient and 'lighter' blending
          */
-        
+
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
-        
+
         // ⚙️ 参数配置 (调教手感)
         const CONFIG = {
             // 粒子分布
-            pointDist: 25,       // 点间距 (控制密度)
+            pointDist: 28,        // 点间距 (越小越密 / 性能开销)
+            maxParticles: 1800,   // 上限（安全保护）
             
-            // 圆形扩散参数
-            cursorRadius: 180,   // 扩散圆的大小 (鼠标影响半径)
-            pushStrength: 60,    // 推力强度 (把点推开多远)
-            
-            // 物理手感 (去震颤的关键)
-            friction: 0.9,       // 阻尼 (0.9 很顺滑，不会抖)
-            returnSpeed: 0.05,   // 回位速度 (越小越慢，像粘稠液体)
-            
+            // 鼠标 / 交互
+            cursorRadius: 180,    // 鼠标影响半径
+            pushStrength: 80,     // 推力强度（总体系数）
+            pushFalloff: 0.9,     // 力的衰减（平滑）
+
+            // 物理手感
+            friction: 0.86,       // 阻尼（越接近 1 越顺滑但更粘）
+            returnSpeed: 0.06,    // 回位速度 （越小越慢像粘稠液体）
+            inertiaLerp: 0.12,    // 速度追随平滑度（0.0 - 1.0）
+
             // 视觉
-            color: '#4285F4',    // Google Blue
-            baseSize: 1.5
+            color: [66,133,244],  // Google Blue RGB
+            baseSize: 1.2,
+            glowSize: 12,
+
+            // breathing & noise
+            globalFreq: 0.18,     // 全局低频（呼吸频率）
+            localFreqRange: [0.8, 1.6], // 每颗粒子的频率倍数在此范围
+            noiseAmount: 0.6      // 微小高频扰动（细节，用作 curl / 微摆动）
         };
 
+        let DPR = Math.max(1, window.devicePixelRatio || 1);
         let width, height;
         let particles = [];
-        // 鼠标位置 (初始在屏幕外)
-        const mouse = { x: -5000, y: -5000 }; 
+        const mouse = { x: -9999, y: -9999, active: false };
 
-        // -----------------------------------------------------------
-        // 📐 Poisson Disk Sampling (泊松盘采样)
-        // 保持这个算法，因为你喜欢这种均匀的分布
-        // -----------------------------------------------------------
+        // -----------------------------
+        // Poisson Disk Sampling (kept)
+        // -----------------------------
         function generatePoissonPoints(w, h, r) {
-            const k = 30; 
+            const k = 30;
             const cellSize = r / Math.sqrt(2);
             const gridW = Math.ceil(w / cellSize);
             const gridH = Math.ceil(h / cellSize);
@@ -75,6 +86,7 @@
             const active = [];
             const p = [];
 
+            // start from center-ish to reduce edge clustering
             const x0 = Math.random() * w;
             const y0 = Math.random() * h;
             const i0 = Math.floor(x0 / cellSize);
@@ -92,7 +104,7 @@
 
                 for (let i = 0; i < k; i++) {
                     const angle = Math.random() * Math.PI * 2;
-                    const dist = Math.random() * r + r;
+                    const dist = r + Math.random() * r;
                     const newX = center.x + Math.cos(angle) * dist;
                     const newY = center.y + Math.sin(angle) * dist;
 
@@ -123,114 +135,251 @@
                     }
                 }
                 if (!found) active.splice(randIndex, 1);
+                if (p.length >= CONFIG.maxParticles) break;
             }
             return p;
         }
 
-        // -----------------------------------------------------------
-        // 🧪 粒子逻辑 (纯净版)
-        // -----------------------------------------------------------
+        // -----------------------------
+        // tiny deterministic noise (pseudo)
+        // -----------------------------
+        function hashTo(seed) {
+            // returns in [0,1)
+            return fract(Math.sin(seed * 127.1) * 43758.5453);
+        }
+        function fract(x) { return x - Math.floor(x); }
+        function pseudoNoise(x, y) {
+            const s = x * 12.9898 + y * 78.233;
+            return hashTo(s);
+        }
+
+        // -----------------------------
+        // Particle class (improved)
+        // -----------------------------
         class Particle {
             constructor(x, y) {
-                this.originX = x; // 家
+                this.originX = x;
                 this.originY = y;
-                this.x = x;       // 当前位置
+                this.x = x;
                 this.y = y;
-                this.vx = 0;      // 速度 X
-                this.vy = 0;      // 速度 Y
+                this.vx = 0;
+                this.vy = 0;
+
+                // phase-driven
+                this.phase = Math.random() * Math.PI * 2;
+                this.localFreq = lerp(CONFIG.localFreqRange[0], CONFIG.localFreqRange[1], Math.random());
+
+                // noise seed -> create subtle differences per point
+                this.seed = (x * 73856093) ^ (y * 19349663) ^ Math.floor(Math.random()*1000);
+
+                // for soft target blending
+                this.targetOffsetX = 0;
+                this.targetOffsetY = 0;
             }
 
-            update() {
-                // 1. 计算与鼠标的距离
+            computeLocalBreath(t) {
+                // low-frequency breathing (value in [-1,1])
+                return Math.sin( (t * CONFIG.globalFreq * this.localFreq) + this.phase );
+            }
+
+            update(t, dt) {
+                // dt in seconds (clamped)
+                // 1) compute breathing and tiny noise
+                const breath = this.computeLocalBreath(t) * 0.6; // amplitude
+                const n = (pseudoNoise(this.originX * 0.01 + t * 0.09, this.originY * 0.01) - 0.5) * CONFIG.noiseAmount;
+
+                // 2) mouse radial push - compute desired offset (target)
                 const dx = this.x - mouse.x;
                 const dy = this.y - mouse.y;
-                const distance = Math.sqrt(dx * dx + dy * dy);
+                const dist = Math.sqrt(dx*dx + dy*dy);
+                let pushX = 0, pushY = 0;
 
-                // 2. 圆形扩散逻辑 (Radial Push)
-                // 没有任何随机数，没有任何噪声 -> 彻底消除"震颤"
-                if (distance < CONFIG.cursorRadius) {
-                    const angle = Math.atan2(dy, dx);
-                    // 力度计算：越近越强，平滑衰减
-                    const force = (CONFIG.cursorRadius - distance) / CONFIG.cursorRadius; 
-                    const push = force * CONFIG.pushStrength * 0.1; // 0.1 是个系数，调整反应灵敏度
+                if (mouse.active && dist < CONFIG.cursorRadius) {
+                    // normalized direction from mouse to particle
+                    const nx = dx / (dist || 1);
+                    const ny = dy / (dist || 1);
 
-                    this.vx += Math.cos(angle) * push;
-                    this.vy += Math.sin(angle) * push;
+                    // push strength scales with closeness (smooth)
+                    const force = Math.pow((CONFIG.cursorRadius - dist) / CONFIG.cursorRadius, 1.2);
+                    const push = CONFIG.pushStrength * force * 0.01; // small scale
+
+                    // add a curl term to make flow feel organic: rotate direction slightly by a sin depending on phase
+                    const curl = Math.sin(this.phase + t * 0.8) * 0.35;
+                    const rx = nx * Math.cos(curl) - ny * Math.sin(curl);
+                    const ry = nx * Math.sin(curl) + ny * Math.cos(curl);
+
+                    pushX = rx * push * (1 + breath * 0.4);
+                    pushY = ry * push * (1 + breath * 0.4);
                 }
 
-                // 3. 回家逻辑 (Linear Interpolation for Smoothness)
-                // 简单的线性回归，最稳、最不抖
-                this.vx += (this.originX - this.x) * CONFIG.returnSpeed;
-                this.vy += (this.originY - this.y) * CONFIG.returnSpeed;
+                // if not active, very small passive wobble outward/inward based on breath
+                const passiveX = (Math.cos(this.phase + t * 0.4) * 0.5 + n * 0.8) * breath * 0.6;
+                const passiveY = (Math.sin(this.phase + t * 0.36) * 0.5 + n * 0.9) * breath * 0.6;
 
-                // 4. 物理摩擦
+                // compose target offset (small)
+                const targetOffX = pushX + passiveX;
+                const targetOffY = pushY + passiveY;
+
+                // smooth target blending (so target doesn't jump)
+                this.targetOffsetX = lerp(this.targetOffsetX, targetOffX, 0.14);
+                this.targetOffsetY = lerp(this.targetOffsetY, targetOffY, 0.14);
+
+                // 3) velocity receives spring toward origin + target offset
+                const desiredX = this.originX + this.targetOffsetX * CONFIG.pointDist * 0.9;
+                const desiredY = this.originY + this.targetOffsetY * CONFIG.pointDist * 0.9;
+
+                // spring force (return home)
+                const ax = (desiredX - this.x) * CONFIG.returnSpeed;
+                const ay = (desiredY - this.y) * CONFIG.returnSpeed;
+
+                // apply acceleration to velocity with inertia smoothing
+                this.vx = lerp(this.vx, this.vx + ax, CONFIG.inertiaLerp);
+                this.vy = lerp(this.vy, this.vy + ay, CONFIG.inertiaLerp);
+
+                // 4) friction / damping
                 this.vx *= CONFIG.friction;
                 this.vy *= CONFIG.friction;
 
-                // 5. 应用移动
+                // 5) apply movement
                 this.x += this.vx;
                 this.y += this.vy;
+
+                // slowly progress phase so motion evolves
+                this.phase += 0.002 + 0.0005 * (this.localFreq - 1) + dt * 0.2;
             }
 
-            draw() {
+            draw(ctx, t) {
+                // compute displacement to measure how "energized" this particle is
+                const dx0 = this.x - this.originX;
+                const dy0 = this.y - this.originY;
+                const displacement = Math.sqrt(dx0*dx0 + dy0*dy0);
+
+                // size & alpha based on displacement and breathing
+                const size = CONFIG.baseSize + Math.min(displacement * 0.08, 4);
+                const alpha = clamp(0.12 + Math.min(displacement * 0.06, 0.7), 0.08, 0.95);
+
+                // draw glow via radial gradient
+                const r = size * CONFIG.glowSize;
+                const gx = this.x;
+                const gy = this.y;
+                const g = ctx.createRadialGradient(gx, gy, 0, gx, gy, r);
+                // inner strong, outer soft
+                const col = CONFIG.color;
+                g.addColorStop(0, `rgba(${col[0]},${col[1]},${col[2]},${alpha})`);
+                g.addColorStop(0.45, `rgba(${col[0]},${col[1]},${col[2]},${alpha*0.55})`);
+                g.addColorStop(1, `rgba(${col[0]},${col[1]},${col[2]},${0.02})`);
+
+                ctx.fillStyle = g;
                 ctx.beginPath();
-                // 动态计算大小：离家越远(受力越大)，粒子稍微变大一点点，增加视觉反馈
-                const displacement = Math.abs(this.x - this.originX) + Math.abs(this.y - this.originY);
-                const size = CONFIG.baseSize + Math.min(displacement * 0.1, 2);
-                
-                ctx.arc(this.x, this.y, size, 0, Math.PI * 2);
-                
-                // 颜色处理：受力时变深蓝，静止时浅蓝
-                // 模拟 Google 那个深浅变化的质感
-                const alpha = 0.4 + Math.min(displacement * 0.05, 0.6);
-                ctx.fillStyle = `rgba(66, 133, 244, ${alpha})`;
+                ctx.arc(gx, gy, r, 0, Math.PI * 2);
                 ctx.fill();
             }
         }
 
-        // -----------------------------------------------------------
-        // 🎬 动画主控
-        // -----------------------------------------------------------
-        function init() {
-            width = canvas.width = window.innerWidth;
-            height = canvas.height = window.innerHeight;
-            
-            const points = generatePoissonPoints(width, height, CONFIG.pointDist);
-            
-            particles = [];
-            points.forEach(p => {
-                particles.push(new Particle(p.x, p.y));
+        // -----------------------------
+        // helpers
+        // -----------------------------
+        function lerp(a, b, t) { return a + (b - a) * t; }
+        function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+
+        // -----------------------------
+        // animation
+        // -----------------------------
+        let lastTime = performance.now();
+        function resize() {
+            DPR = Math.max(1, window.devicePixelRatio || 1);
+            width = canvas.width = Math.floor(window.innerWidth * DPR);
+            height = canvas.height = Math.floor(window.innerHeight * DPR);
+            canvas.style.width = window.innerWidth + 'px';
+            canvas.style.height = window.innerHeight + 'px';
+
+            // regenerate particles if size changed significantly
+            regenerateParticles();
+        }
+
+        function regenerateParticles() {
+            const w = Math.floor(window.innerWidth);
+            const h = Math.floor(window.innerHeight);
+            const points = generatePoissonPoints(w, h, CONFIG.pointDist);
+
+            particles = points.slice(0, CONFIG.maxParticles).map(p => {
+                // scale for DPR: keep origin in CSS pixel coordinates (we draw in physical pixels)
+                // but we want behaviors in CSS pixels for interaction
+                return new Particle(p.x, p.y);
             });
         }
 
-        function animate() {
+        function animate(now) {
+            const dtMs = now - lastTime;
+            // clamp dt for stability
+            const dt = Math.min(dtMs / 1000, 0.033);
+            lastTime = now;
+            const t = now * 0.001;
+
+            // clear with a subtle background to keep UI readable
             ctx.clearRect(0, 0, width, height);
-            
+
+            // render pass: draw soft glow layer using additive blending
+            ctx.save();
+            ctx.scale(DPR, DPR); // draw in CSS pixels space (we used origin in CSS px)
+            ctx.globalCompositeOperation = 'lighter'; // additive for glow
+            // subtle global fade (if you want ghosting, can lower alpha)
+            // draw all particles
             for (let i = 0; i < particles.length; i++) {
-                particles[i].update();
-                particles[i].draw();
+                particles[i].update(t, dt);
+                particles[i].draw(ctx, t);
             }
+            ctx.restore();
+
+            // restore default composite for crisp UI on top
+            ctx.globalCompositeOperation = 'source-over';
 
             requestAnimationFrame(animate);
         }
 
-        window.addEventListener('resize', init);
-        window.addEventListener('mousemove', e => {
+        // -----------------------------
+        // interaction
+        // -----------------------------
+        window.addEventListener('mousemove', (e) => {
             mouse.x = e.clientX;
             mouse.y = e.clientY;
-        });
-        
-        // 鼠标移出时，重置鼠标位置，让粒子归位
-        window.addEventListener('mouseleave', () => {
-            mouse.x = -5000;
-            mouse.y = -5000;
+            mouse.active = true;
         });
 
-        init();
-        animate();
-        
+        window.addEventListener('mouseleave', () => {
+            mouse.x = -9999;
+            mouse.y = -9999;
+            mouse.active = false;
+        });
+
+        // touch support
+        window.addEventListener('touchmove', (ev) => {
+            const t = ev.touches[0];
+            if (t) {
+                mouse.x = t.clientX;
+                mouse.y = t.clientY;
+                mouse.active = true;
+            }
+        }, { passive: true });
+
+        window.addEventListener('touchend', () => {
+            mouse.active = false;
+            mouse.x = -9999;
+            mouse.y = -9999;
+        });
+
+        window.addEventListener('resize', () => {
+            // small debounce not necessary — regenerate quickly
+            resize();
+        });
+
+        // initial
+        resize();
+        lastTime = performance.now();
+        requestAnimationFrame(animate);
+
         // =========================================================
-        // 🖼️ 业务逻辑：自动生成分类按钮 (保留你的需求)
+        // 业务逻辑保留（不改动）: categories etc...
         // =========================================================
         const categories = [
             { id: 'illustration', name: 'Commercial Illustration' }, 
@@ -239,9 +388,6 @@
             { id: 'sketch',       name: 'Sketches & Doodles' },
             { id: 'other',        name: 'Others' },
         ];
-        
-        // ... (你需要的话，我可以把之前的作品集加载代码再贴一遍，但为了代码清晰，这里先保证特效完美)
-
     </script>
 </body>
 </html>
