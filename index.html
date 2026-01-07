@@ -98,16 +98,51 @@
         .hero p.subtitle { font-family: 'Inter', sans-serif; font-size: 0.85rem; color: #666; font-weight: 600; text-transform: uppercase; letter-spacing: 4px; margin-top: 20px; border-top: 1px solid rgba(0,0,0,0.1); padding-top: 20px; display: inline-block; }
 
         /* ================== 5. 筛选栏 ================== */
+        /* ================== 5. 筛选栏 (优化自适应) ================== */
         .filter-wrapper {
-            background: rgba(255, 255, 255, 0.4); backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.5);
-            padding: 8px 12px; border-radius: 60px; box-shadow: 0 10px 40px rgba(0,0,0,0.05);
-            display: flex; align-items: center; max-width: 90vw; overflow-x: auto; -webkit-overflow-scrolling: touch; gap: 8px;
+            /* 玻璃胶囊容器基础样式 */
+            background: rgba(255, 255, 255, 0.4);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            padding: 8px 8px; /* 稍微减小内边距 */
+            border-radius: 60px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.05);
+            
+            /* 核心布局：横向滚动 */
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            
+            /* 尺寸限制 */
+            max-width: 90vw; /* 宽度最大占屏幕 90% */
+            width: max-content; /* 宽度随内容撑开，但不超过 max-width */
+            margin: 0 auto; /* 整体居中 */
+            
+            /* 滚动机制 */
+            overflow-x: auto; /* 允许横向滚动 */
+            overflow-y: hidden;
+            -webkit-overflow-scrolling: touch; /* 移动端丝滑滚动 */
+            
+            /* 视觉优化：两端羽化遮罩 (提示用户左右还有内容) */
+            /* 这里的 mask-image 会让左右边缘变透明 */
+            mask-image: linear-gradient(to right, transparent, black 15px, black calc(100% - 15px), transparent);
+            -webkit-mask-image: linear-gradient(to right, transparent, black 15px, black calc(100% - 15px), transparent);
         }
-        .filter-wrapper::-webkit-scrollbar { display: none; }
+
+        /* 隐藏滚动条 (保持美观) */
+        .filter-wrapper::-webkit-scrollbar { 
+            display: none; 
+        }
+        
+        /* 按钮样式微调 (防止被压缩) */
         .filter-btn {
+            /* ...原有的样式... */
             padding: 10px 24px; border: none; background: transparent; border-radius: 40px;
-            font-size: 0.9rem; font-weight: 600; color: #555; cursor: pointer; transition: all 0.3s ease; white-space: nowrap; flex-shrink: 0;
+            font-size: 0.9rem; font-weight: 600; color: #555; cursor: pointer; transition: all 0.3s ease; 
+            white-space: nowrap; /* 关键：禁止文字换行 */
+            flex-shrink: 0;      /* 关键：禁止按钮变窄 */
         }
+        /* ...保持 .filter-btn:hover 和 .filter-btn.active 不变... */
         .filter-btn:hover { background: rgba(255, 255, 255, 0.6); color: #000; }
         .filter-btn.active { background: #1a1a1a; color: #fff; box-shadow: 0 4px 15px rgba(0,0,0,0.2); }
 
@@ -456,6 +491,17 @@
         }
 
         initPortfolio();
+        
+        // [新增] 鼠标滚轮横向滚动支持
+        const filterContainer = document.getElementById('filters');
+        
+        filterContainer.addEventListener('wheel', (e) => {
+            // 如果容器内容宽度 大于 容器可视宽度，说明有滚动条
+            if (filterContainer.scrollWidth > filterContainer.clientWidth) {
+                e.preventDefault(); // 阻止页面上下滚动
+                filterContainer.scrollLeft += e.deltaY; // 将垂直滚动转换为水平滚动
+            }
+        }, { passive: false });
 
     </script>
 </body>
