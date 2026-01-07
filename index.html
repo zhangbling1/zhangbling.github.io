@@ -5,172 +5,154 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Google Antigravity | Portfolio</title>
     <style>
-        /* 隐藏滚动条，沉浸式体验 */
         body { margin: 0; overflow: hidden; background-color: #f8f9fa; font-family: 'Google Sans', sans-serif; }
-        canvas { display: block; }
+        canvas { display: block; position: fixed; top: 0; left: 0; z-index: 0; }
         
-        /* 你的作品集 UI 层 (保持不变) */
-        .ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-        header { background: rgba(255,255,255,0.8); backdrop-filter: blur(10px); padding: 40px 60px; border-radius: 24px; box-shadow: 0 4px 30px rgba(0,0,0,0.05); text-align: center; pointer-events: auto; transition: transform 0.3s ease; }
-        header:hover { transform: translateY(-5px); }
-        h1 { margin: 0; color: #202124; font-size: 2.5rem; letter-spacing: -0.5px; }
-        p { margin-top: 10px; color: #5f6368; }
-        .btn { margin-top: 20px; padding: 10px 24px; background: #1a73e8; color: white; border: none; border-radius: 50px; font-size: 1rem; cursor: pointer; transition: background 0.2s; }
-        .btn:hover { background: #1557b0; }
+        /* UI 层 */
+        .ui-layer { position: relative; z-index: 10; width: 100%; height: 100vh; pointer-events: none; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        header { pointer-events: auto; background: rgba(255,255,255,0.9); backdrop-filter: blur(20px); padding: 60px 80px; border-radius: 32px; box-shadow: 0 20px 40px rgba(0,0,0,0.05); text-align: center; transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); }
+        header:hover { transform: translateY(-5px); box-shadow: 0 25px 50px rgba(0,0,0,0.08); }
+        h1 { margin: 0; color: #202124; font-size: 3rem; letter-spacing: -1px; font-weight: 700; }
+        p.subtitle { margin-top: 16px; color: #5f6368; font-size: 1.1rem; }
+        
+        .filter-buttons { margin-top: 30px; display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+        .btn { padding: 10px 24px; border: 1px solid #dadce0; background: transparent; border-radius: 100px; color: #5f6368; cursor: pointer; font-size: 0.9rem; font-weight: 500; transition: all 0.2s; }
+        .btn:hover { background: #f1f3f4; color: #202124; border-color: #f1f3f4; }
+        .btn.active { background: #1a73e8; color: white; border-color: #1a73e8; box-shadow: 0 4px 12px rgba(26, 115, 232, 0.2); }
+
+        /* 隐藏的画廊容器，用于配合你的业务逻辑 */
+        .gallery-container { display: none; } 
     </style>
 </head>
 <body>
 
+    <canvas id="canvas"></canvas>
+
     <div class="ui-layer">
         <header>
             <h1>My Portfolio</h1>
-            <p>Visual Design & Artworks</p>
-            <button class="btn">Enter Gallery</button>
+            <p class="subtitle">Visual Design & Artworks Collection</p>
+            
+            <div class="filter-buttons" id="filters">
+                </div>
         </header>
     </div>
 
-    <canvas id="canvas"></canvas>
+    <div class="gallery-container" id="gallery"></div>
 
     <script>
         /**
-         * 🌊 1:1 复刻版：基于 Poisson Disk Sampling (泊松盘采样)
-         * 参考自上传文件 main-F3FYKJAU.js 中的逻辑
+         * 🌊 Google Antigravity 核心复刻 V3: Curl Noise (旋度噪声)
+         * 这种算法模拟的是流体，而不是弹簧，所以没有"果冻"感。
          */
+        
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
+        
+        // 🎨 视觉参数 (Google Blue)
+        const CONFIG = {
+            particleCount: 400,      // 粒子数量 (越多越细腻)
+            color: '#4285F4',        // 核心蓝
+            baseSpeed: 0.2,          // 静态时的流动速度
+            mousePower: 0.08,        // 鼠标搅动的力度
+            friction: 0.96,          // 摩擦力 (越接近1越丝滑，越小停得越快)
+            noiseScale: 0.002,       // 噪声纹理的大小
+            trail: 0.35              // 拖尾长度 (0~1, 越小拖尾越长)
+        };
 
         let width, height;
         let particles = [];
-        
-        // 🐭 鼠标物理参数
-        const mouse = { x: -1000, y: -1000 };
-        const target = { x: -1000, y: -1000 };
-
-        // ⚙️ 配置：调整这里可以改变手感
-        const CONFIG = {
-            pointDistance: 25,  // 点与点之间的间距 (控制密度)
-            mouseForce: 1500,   // 鼠标吸引力强度 (越大吸得越紧)
-            friction: 0.94,     // 摩擦力 (0.9 ~ 0.99, 越大越滑)
-            returnForce: 0.04,  // 回弹力 (控制点回到原位的速度)
-            color: '#4285F4'    // Google Blue
-        };
+        const mouse = { x: -1000, y: -1000, vx: 0, vy: 0, prevX: -1000, prevY: -1000 };
 
         // -----------------------------------------------------------
-        // 📐 极简版泊松盘采样 (模拟文件中的分布算法)
-        // 目的：让点分布得极其均匀，但又不是死板的网格
+        // 🌪️ Simplex Noise (噪声核心)
         // -----------------------------------------------------------
-        function generatePoissonPoints(w, h, minDist) {
-            const k = 30; // 最大尝试次数
-            const cellSize = minDist / Math.sqrt(2);
-            const gridW = Math.ceil(w / cellSize);
-            const gridH = Math.ceil(h / cellSize);
-            const grid = new Array(gridW * gridH).fill(-1);
-            const activeList = [];
-            const points = [];
-
-            // 随机添加第一个点
-            const firstPoint = { x: Math.random() * w, y: Math.random() * h };
-            activeList.push(firstPoint);
-            points.push(firstPoint);
-            
-            const col = Math.floor(firstPoint.x / cellSize);
-            const row = Math.floor(firstPoint.y / cellSize);
-            grid[col + row * gridW] = 0; // 索引 0
-
-            while (activeList.length > 0) {
-                const randIndex = Math.floor(Math.random() * activeList.length);
-                const pos = activeList[randIndex];
-                let found = false;
-
-                for (let i = 0; i < k; i++) {
-                    const angle = Math.random() * Math.PI * 2;
-                    const dist = Math.random() * minDist + minDist; // minDist ~ 2*minDist
-                    const newX = pos.x + Math.cos(angle) * dist;
-                    const newY = pos.y + Math.sin(angle) * dist;
-
-                    if (newX >= 0 && newX < w && newY >= 0 && newY < h) {
-                        const newCol = Math.floor(newX / cellSize);
-                        const newRow = Math.floor(newY / cellSize);
-                        let ok = true;
-
-                        // 检查邻居
-                        for (let x = -1; x <= 1; x++) {
-                            for (let y = -1; y <= 1; y++) {
-                                const neighborIndex = (newCol + x) + (newRow + y) * gridW;
-                                const neighborPointIndex = grid[neighborIndex];
-                                if (neighborPointIndex !== undefined && neighborPointIndex !== -1) {
-                                    const neighbor = points[neighborPointIndex];
-                                    const d = Math.hypot(neighbor.x - newX, neighbor.y - newY);
-                                    if (d < minDist) {
-                                        ok = false;
-                                    }
-                                }
-                            }
-                        }
-
-                        if (ok) {
-                            const newPoint = { x: newX, y: newY };
-                            activeList.push(newPoint);
-                            points.push(newPoint);
-                            grid[newCol + newRow * gridW] = points.length - 1;
-                            found = true;
-                            break; // 找到了一个有效点，停止尝试
-                        }
-                    }
+        const Simplex = (function() {
+            // 简化的快速噪声算法
+            const perm = new Uint8Array(512);
+            const p = new Uint8Array([151,160,137,91,90,15,131,13,201,95,96,53,194,233,7,225,140,36,103,30,69,142,8,99,37,240,21,10,23,190,6,148,247,120,234,75,0,26,197,62,94,252,219,203,117,35,11,32,57,177,33,88,237,149,56,87,174,20,125,136,171,168,68,175,74,165,71,134,139,48,27,166,77,146,158,231,83,111,229,122,60,211,133,230,220,105,92,41,55,46,245,40,244,102,143,54,65,25,63,161,1,216,80,73,209,76,132,187,208,89,18,169,200,196,135,130,116,188,159,86,164,100,109,198,173,186,3,64,52,217,226,250,124,123,5,202,38,147,118,126,255,82,85,212,207,206,59,227,47,16,58,17,182,189,28,42,223,183,170,213,119,248,152,2,44,154,163,70,221,153,101,155,167,43,172,9,129,22,39,253,19,98,108,110,79,113,224,232,178,185,112,104,218,246,97,228,251,34,242,193,238,210,144,12,191,179,162,241,81,51,145,235,249,14,239,107,49,192,214,31,181,199,106,157,184,84,204,176,115,121,50,45,127,4,150,254,138,236,205,93,222,114,67,29,24,72,243,141,128,195,78,66,215,61,156,180]);
+            for(let i=0; i<512; i++) perm[i] = p[i & 255];
+            const grad3 = [[1,1,0],[-1,1,0],[1,-1,0],[-1,-1,0],[1,0,1],[-1,0,1],[1,0,-1],[-1,0,-1],[0,1,1],[0,-1,1],[0,1,-1],[0,-1,-1]];
+            return {
+                noise: function(xin, yin, zin) {
+                    let n0, n1, n2, n3;
+                    const F3 = 1.0/3.0, s = (xin+yin+zin)*F3, i = Math.floor(xin+s), j = Math.floor(yin+s), k = Math.floor(zin+s);
+                    const G3 = 1.0/6.0, t = (i+j+k)*G3, X0 = i-t, Y0 = j-t, Z0 = k-t, x0 = xin-X0, y0 = yin-Y0, z0 = zin-Z0;
+                    let i1, j1, k1, i2, j2, k2;
+                    if(x0>=y0) { if(y0>=z0) { i1=1; j1=0; k1=0; i2=1; j2=1; k2=0; } else if(x0>=z0) { i1=1; j1=0; k1=0; i2=1; j2=0; k2=1; } else { i1=0; j1=0; k1=1; i2=1; j2=0; k2=1; } }
+                    else { if(y0<z0) { i1=0; j1=0; k1=1; i2=0; j2=1; k2=1; } else if(x0<z0) { i1=0; j1=1; k1=0; i2=0; j2=1; k2=1; } else { i1=0; j1=1; k1=0; i2=1; j2=1; k2=0; } }
+                    const x1 = x0 - i1 + G3, y1 = y0 - j1 + G3, z1 = z0 - k1 + G3;
+                    const x2 = x0 - i2 + 2.0*G3, y2 = y0 - j2 + 2.0*G3, z2 = z0 - k2 + 2.0*G3;
+                    const x3 = x0 - 1.0 + 3.0*G3, y3 = y0 - 1.0 + 3.0*G3, z3 = z0 - 1.0 + 3.0*G3;
+                    const ii = i & 255, jj = j & 255, kk = k & 255;
+                    const gi0 = perm[ii+perm[jj+perm[kk]]] % 12, gi1 = perm[ii+i1+perm[jj+j1+perm[kk+k1]]] % 12, gi2 = perm[ii+i2+perm[jj+j2+perm[kk+k2]]] % 12, gi3 = perm[ii+1+perm[jj+1+perm[kk+1]]] % 12;
+                    let t0 = 0.6 - x0*x0 - y0*y0 - z0*z0; if(t0<0) n0 = 0.0; else { t0 *= t0; n0 = t0 * t0 * (grad3[gi0][0]*x0 + grad3[gi0][1]*y0 + grad3[gi0][2]*z0); }
+                    let t1 = 0.6 - x1*x1 - y1*y1 - z1*z1; if(t1<0) n1 = 0.0; else { t1 *= t1; n1 = t1 * t1 * (grad3[gi1][0]*x1 + grad3[gi1][1]*y1 + grad3[gi1][2]*z1); }
+                    let t2 = 0.6 - x2*x2 - y2*y2 - z2*z2; if(t2<0) n2 = 0.0; else { t2 *= t2; n2 = t2 * t2 * (grad3[gi2][0]*x2 + grad3[gi2][1]*y2 + grad3[gi2][2]*z2); }
+                    let t3 = 0.6 - x3*x3 - y3*y3 - z3*z3; if(t3<0) n3 = 0.0; else { t3 *= t3; n3 = t3 * t3 * (grad3[gi3][0]*x3 + grad3[gi3][1]*y3 + grad3[gi3][2]*z3); }
+                    return 32.0 * (n0 + n1 + n2 + n3);
                 }
-
-                if (!found) {
-                    activeList.splice(randIndex, 1);
-                }
-            }
-            return points;
-        }
+            };
+        })();
 
         // -----------------------------------------------------------
-        // 🧪 粒子类
+        // 🧪 Particle Logic (粒子逻辑)
         // -----------------------------------------------------------
         class Particle {
-            constructor(x, y) {
-                this.originX = x; // 原始位置 (Home)
-                this.originY = y;
-                this.x = x;       // 当前位置
-                this.y = y;
-                this.vx = 0;      // 速度
+            constructor() {
+                this.init();
+            }
+
+            init() {
+                this.x = Math.random() * width;
+                this.y = Math.random() * height;
+                this.vx = 0;
                 this.vy = 0;
-                this.size = Math.random() * 1.5 + 1; // 随机大小 1~2.5
+                this.size = Math.random() * 2 + 1; // 1~3px
+                this.life = Math.random() * 1000;  // 用于噪声的时间偏移
             }
 
             update() {
-                // 1. 计算鼠标距离
-                const dx = mouse.x - this.x;
-                const dy = mouse.y - this.y;
-                const distSq = dx * dx + dy * dy;
+                // 1. Curl Noise (旋度噪声) 计算 - 这是"水母感"的核心
+                // 传统的噪声是随机值，旋度噪声是基于噪声导数的旋转场
+                const timeScale = 0.0005;
+                const n1 = Simplex.noise(this.x * CONFIG.noiseScale, this.y * CONFIG.noiseScale, performance.now() * timeScale);
+                const n2 = Simplex.noise(this.x * CONFIG.noiseScale + 1000, this.y * CONFIG.noiseScale + 1000, performance.now() * timeScale);
+                
+                // 将噪声转换为角度，模拟流体流动
+                const angle = n1 * Math.PI * 4;
+                
+                // 2. 基础流动力
+                this.vx += Math.cos(angle) * CONFIG.baseSpeed;
+                this.vy += Math.sin(angle) * CONFIG.baseSpeed;
 
-                // 2. 鼠标吸引力 (距离越近，吸力越大，但有上限)
-                // 这种非线性力场能制造出"水母触须"般的拖尾感
-                let force = 0;
-                if (distSq < 100000) { // 只有靠近鼠标才有反应
-                    force = CONFIG.mouseForce / (distSq + 500); 
+                // 3. 鼠标交互 - 搅动 (Stirring)
+                // 计算鼠标移动的速度向量 (mouse.vx, mouse.vy)
+                const dx = this.x - mouse.x;
+                const dy = this.y - mouse.y;
+                const distSq = dx*dx + dy*dy;
+                const influenceRadiusSq = 150 * 150; // 影响半径
+
+                if (distSq < influenceRadiusSq) {
+                    // 距离越近，受鼠标速度影响越大
+                    const force = (1 - distSq / influenceRadiusSq) * CONFIG.mousePower;
+                    this.vx += mouse.vx * force;
+                    this.vy += mouse.vy * force;
                 }
 
-                const angle = Math.atan2(dy, dx);
-                const ax = Math.cos(angle) * force;
-                const ay = Math.sin(angle) * force;
-
-                // 3. 回弹力 (Spring Force) - 让点想回到原位
-                const homeDx = this.originX - this.x;
-                const homeDy = this.originY - this.y;
-                
-                this.vx += ax + homeDx * CONFIG.returnForce;
-                this.vy += ay + homeDy * CONFIG.returnForce;
-
-                // 4. 物理摩擦
+                // 4. 摩擦力 (流体阻力) - 消除弹簧感
                 this.vx *= CONFIG.friction;
                 this.vy *= CONFIG.friction;
 
-                // 5. 更新位置
+                // 5. 应用速度
                 this.x += this.vx;
                 this.y += this.vy;
+
+                // 6. 边界循环 (Wrap around)
+                if (this.x < 0) this.x = width;
+                if (this.x > width) this.x = 0;
+                if (this.y < 0) this.y = height;
+                if (this.y > height) this.y = 0;
             }
 
             draw() {
@@ -181,25 +163,28 @@
             }
         }
 
+        // -----------------------------------------------------------
+        // 🎬 主程序
+        // -----------------------------------------------------------
         function init() {
             width = canvas.width = window.innerWidth;
             height = canvas.height = window.innerHeight;
-            
-            // 使用泊松分布生成点
-            const points = generatePoissonPoints(width, height, CONFIG.pointDistance);
-            
             particles = [];
-            points.forEach(p => {
-                particles.push(new Particle(p.x, p.y));
-            });
+            for (let i = 0; i < CONFIG.particleCount; i++) {
+                particles.push(new Particle());
+            }
         }
 
         function animate() {
-            ctx.clearRect(0, 0, width, height);
-            
-            // 鼠标平滑插值
-            mouse.x += (target.x - mouse.x) * 0.15;
-            mouse.y += (target.y - mouse.y) * 0.15;
+            // 拖尾效果：用半透明白色覆盖上一帧
+            ctx.fillStyle = `rgba(248, 249, 250, ${CONFIG.trail})`; 
+            ctx.fillRect(0, 0, width, height);
+
+            // 更新鼠标速度 (计算惯性)
+            mouse.vx = mouse.x - mouse.prevX;
+            mouse.vy = mouse.y - mouse.prevY;
+            mouse.prevX = mouse.x;
+            mouse.prevY = mouse.y;
 
             particles.forEach(p => {
                 p.update();
@@ -209,17 +194,58 @@
             requestAnimationFrame(animate);
         }
 
-        // 事件监听
+        // 鼠标监听
         window.addEventListener('resize', init);
         window.addEventListener('mousemove', e => {
-            target.x = e.clientX;
-            target.y = e.clientY;
-            // 初始激活
-            if (mouse.x === -1000) { mouse.x = e.clientX; mouse.y = e.clientY; }
+            mouse.x = e.clientX;
+            mouse.y = e.clientY;
+            // 初始化 prev 以防第一帧飞出去
+            if (mouse.prevX === -1000) {
+                mouse.prevX = e.clientX;
+                mouse.prevY = e.clientY;
+            }
         });
 
         init();
         animate();
+
+
+        // =========================================================
+        // 🖼️ 业务逻辑：自动生成分类按钮 (保留你的需求)
+        // =========================================================
+        const categories = [
+            { id: 'illustration', name: 'Commercial Illustration' }, 
+            { id: 'character',    name: 'Character Design' },
+            { id: 'scene',        name: 'Environment Art' },
+            { id: 'sketch',       name: 'Sketches & Doodles' },
+            { id: 'other',        name: 'Others' },
+        ];
+
+        const filtersContainer = document.getElementById('filters');
+        
+        // 生成按钮
+        const allBtn = document.createElement('button');
+        allBtn.className = 'btn active';
+        allBtn.innerText = 'All Works';
+        filtersContainer.appendChild(allBtn);
+
+        categories.forEach(cat => {
+            const btn = document.createElement('button');
+            btn.className = 'btn';
+            btn.innerText = cat.name;
+            filtersContainer.appendChild(btn);
+        });
+
+        // 按钮点击交互逻辑 (简化版，你可以对接之前的 loadImages)
+        const buttons = document.querySelectorAll('.btn');
+        buttons.forEach(btn => {
+            btn.addEventListener('click', function() {
+                buttons.forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                // 这里调用你的 loadImages 函数...
+            });
+        });
+
     </script>
 </body>
 </html>
