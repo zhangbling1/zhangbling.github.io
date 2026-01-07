@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Design Portfolio</title>
+    <title>Antigravity Portfolio</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;800&family=Playfair+Display:ital,wght@1,600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Playfair+Display:ital,wght@1,600&display=swap" rel="stylesheet">
 
     <style>
         /* ================== 1. 基础重置 ================== */
@@ -18,7 +18,21 @@
             overflow-x: hidden;
         }
 
-        /* ================== 2. 粒子画布 (底层) ================== */
+        /* ================== 2. 纯黑开场 (无文字) ================== */
+        #splash-screen {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: #000;
+            z-index: 9999;
+            transition: opacity 1.5s cubic-bezier(0.19, 1, 0.22, 1), visibility 1.5s;
+        }
+        #splash-screen.hidden {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+        }
+
+        /* ================== 3. 粒子画布 (底层) ================== */
         canvas { 
             display: block; 
             position: fixed; 
@@ -26,212 +40,294 @@
             z-index: -1; 
         }
 
-        /* ================== 3. UI 内容层 ================== */
+        /* ================== 4. UI 内容层 ================== */
         .content-layer {
             position: relative;
             z-index: 10;
             width: 100%;
-            min-height: 100vh;
+            min-height: 100vh; /* 保证最小高度撑满屏幕 */
             display: flex;
             flex-direction: column;
             align-items: center;
             opacity: 0; 
-            transform: translateY(30px);
+            transform: translateY(40px);
             transition: all 1.2s cubic-bezier(0.19, 1, 0.22, 1);
         }
-        .content-layer.visible { opacity: 1; transform: translateY(0); }
+        
+        .content-layer.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
 
         /* 导航栏 */
         nav {
-            position: fixed; top: 0; left: 0; right: 0; 
-            padding: 20px 40px; display: flex; justify-content: space-between; align-items: center;
-            background: linear-gradient(to bottom, rgba(255,255,255,0.8), rgba(255,255,255,0)); 
+            position: fixed; 
+            top: 0; left: 0; right: 0; /* 强制拉伸，修复右侧缺口 */
+            padding: 20px 40px; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center;
+            background: linear-gradient(to bottom, rgba(255,255,255,0.9), rgba(255,255,255,0)); 
             z-index: 100; 
+            box-sizing: border-box;
         }
 
-        /* --- 核心修改：品牌 Logo 区域 (图标+文字) --- */
+        /* LOGO 组合 */
         .brand-container {
             display: flex;
             align-items: center;
-            text-decoration: none; /* 去掉链接下划线 */
-            gap: 12px; /* 图标和文字之间的间距 */
+            text-decoration: none;
+            gap: 12px;
         }
+        .nav-icon { height: 32px; width: auto; display: block; }
+        .logo-text { font-family: 'Inter', sans-serif; font-weight: 800; font-size: 1.4rem; color: #1a1a1a; letter-spacing: -0.5px; }
 
-        /* 图标样式 */
-        .nav-icon {
-            height: 36px; /* 设定一个合适的高度 */
-            width: auto;  /* 宽度自适应 */
-            display: block;
-        }
-        
-        /* (仅用于演示的 SVG 占位符样式，你替换图片后可忽略) */
-        .placeholder-svg { animation: rotatePlaceholder 10s linear infinite; }
-        @keyframes rotatePlaceholder { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-
-        /* 文字样式 */
-        .logo-text { 
-            font-family: 'Inter', sans-serif;
-            font-weight: 800; 
-            font-size: 1.4rem; 
-            color: #1a1a1a; 
-            letter-spacing: -0.5px;
-        }
-
-        /* ================== 4. Hero 区域 ================== */
+        /* ================== 5. Hero 区域 (杂志排版) ================== */
         .hero-section {
-            margin-top: 14vh; /* 稍微往下顶一点，给 Nav 留空间 */
+            margin-top: 15vh;
             margin-bottom: 60px;
             text-align: center;
             display: flex;
             flex-direction: column;
             align-items: center;
             width: 100%;
-            max-width: 900px;
+            max-width: 1000px;
             padding: 0 20px;
+            box-sizing: border-box;
         }
 
-        .title-wrapper { margin-bottom: 40px; position: relative; }
-        .hero h1 { font-size: 5.5rem; margin: 0; line-height: 1.1; color: #1a1a1a; letter-spacing: -2px; }
+        .title-wrapper { margin-bottom: 50px; }
+        .hero h1 { font-size: 5.5rem; margin: 0; line-height: 1.0; color: #1a1a1a; letter-spacing: -2px; }
         .word-digital { font-family: 'Inter', sans-serif; font-weight: 800; display: block; }
         .word-biology { font-family: 'Playfair Display', serif; font-style: italic; font-weight: 600; color: #2a2a2a; display: block; }
+        
+        /* 大屏时文字并在同一行 */
         @media (min-width: 768px) { .word-digital, .word-biology { display: inline; } }
-        .hero p.subtitle { font-family: 'Inter', sans-serif; font-size: 0.85rem; color: #666; font-weight: 600; text-transform: uppercase; letter-spacing: 4px; margin-top: 20px; border-top: 1px solid rgba(0,0,0,0.1); padding-top: 20px; display: inline-block; }
+        
+        .hero p.subtitle { 
+            font-family: 'Inter', sans-serif; 
+            font-size: 0.85rem; 
+            color: #666; 
+            font-weight: 600; 
+            text-transform: uppercase; 
+            letter-spacing: 4px; 
+            margin-top: 25px; 
+            border-top: 1px solid rgba(0,0,0,0.1); 
+            padding-top: 25px; 
+            display: inline-block; 
+        }
 
-        /* ================== 5. 筛选栏 ================== */
-        /* ================== 5. 筛选栏 (优化自适应) ================== */
+        /* ================== 6. 筛选栏 (智能响应式) ================== */
         .filter-wrapper {
-            /* 玻璃胶囊容器基础样式 */
+            /* 默认 (电脑/平板): 单行横滑玻璃胶囊 */
             background: rgba(255, 255, 255, 0.4);
             backdrop-filter: blur(16px);
             border: 1px solid rgba(255, 255, 255, 0.5);
-            padding: 8px 8px; /* 稍微减小内边距 */
+            padding: 8px;
             border-radius: 60px;
             box-shadow: 0 10px 40px rgba(0,0,0,0.05);
             
-            /* 核心布局：横向滚动 */
             display: flex;
             align-items: center;
             gap: 8px;
             
-            /* 尺寸限制 */
-            max-width: 90vw; /* 宽度最大占屏幕 90% */
-            width: max-content; /* 宽度随内容撑开，但不超过 max-width */
-            margin: 0 auto; /* 整体居中 */
+            max-width: 90vw;
+            width: max-content;
+            margin: 0 auto;
             
-            /* 滚动机制 */
-            overflow-x: auto; /* 允许横向滚动 */
+            overflow-x: auto;
             overflow-y: hidden;
-            -webkit-overflow-scrolling: touch; /* 移动端丝滑滚动 */
+            -webkit-overflow-scrolling: touch;
             
-            /* 视觉优化：两端羽化遮罩 (提示用户左右还有内容) */
-            /* 这里的 mask-image 会让左右边缘变透明 */
+            /* 左右边缘渐变遮罩 (提示可滑动) */
             mask-image: linear-gradient(to right, transparent, black 15px, black calc(100% - 15px), transparent);
             -webkit-mask-image: linear-gradient(to right, transparent, black 15px, black calc(100% - 15px), transparent);
         }
 
-        /* 隐藏滚动条 (保持美观) */
-        .filter-wrapper::-webkit-scrollbar { 
-            display: none; 
-        }
-        
-        /* 按钮样式微调 (防止被压缩) */
+        .filter-wrapper::-webkit-scrollbar { display: none; }
+
         .filter-btn {
-            /* ...原有的样式... */
-            padding: 10px 24px; border: none; background: transparent; border-radius: 40px;
-            font-size: 0.9rem; font-weight: 600; color: #555; cursor: pointer; transition: all 0.3s ease; 
-            white-space: nowrap; /* 关键：禁止文字换行 */
-            flex-shrink: 0;      /* 关键：禁止按钮变窄 */
+            padding: 10px 24px;
+            border: none;
+            background: transparent;
+            border-radius: 40px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #555;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            white-space: nowrap; /* 禁止换行 */
+            flex-shrink: 0;      /* 禁止压缩 */
         }
-        /* ...保持 .filter-btn:hover 和 .filter-btn.active 不变... */
+
         .filter-btn:hover { background: rgba(255, 255, 255, 0.6); color: #000; }
         .filter-btn.active { background: #1a1a1a; color: #fff; box-shadow: 0 4px 15px rgba(0,0,0,0.2); }
 
-        /* ================== 6. 瀑布流画廊 ================== */
-        .gallery-container { width: 100%; max-width: 1600px; padding: 0 40px 120px; column-count: 4; column-gap: 30px; box-sizing: border-box; }
-        @media (max-width: 1400px) { .gallery-container { column-count: 3; } }
-        @media (max-width: 1000px) { .gallery-container { column-count: 2; column-gap: 20px; } .hero h1 { font-size: 3.5rem; } }
-        @media (max-width: 600px) { .gallery-container { column-count: 1; } .hero h1 { font-size: 2.8rem; } nav { padding: 15px 20px; } .nav-icon { height: 28px; } .logo-text { font-size: 1.2rem; } }
-
-        .photo-card {
-            break-inside: avoid; margin-bottom: 30px; border-radius: 16px; overflow: hidden;
-            background: rgba(255, 255, 255, 0.6); backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.5);
-            box-shadow: 0 4px 20px rgba(0,0,0,0.02); transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
-            opacity: 0; transform: translateY(40px); pointer-events: auto; display: flex; flex-direction: column;
+        /* --- 手机端特殊处理 (断点 600px) --- */
+        @media (max-width: 600px) {
+            .filter-wrapper {
+                /* 切换为多行矩阵 */
+                flex-wrap: wrap; 
+                justify-content: center;
+                width: 100%;
+                max-width: 95%;
+                border-radius: 24px; /* 变成方块圆角 */
+                padding: 15px 10px;
+                
+                /* 取消遮罩和滚动 */
+                mask-image: none;
+                -webkit-mask-image: none;
+                overflow: visible;
+                
+                /* 进场动画 */
+                animation: expandBox 0.6s ease forwards;
+            }
+            .filter-btn {
+                padding: 8px 16px;
+                font-size: 0.85rem;
+                background: rgba(255,255,255,0.5); /* 手机端给个底色 */
+                margin: 2px;
+            }
+            .hero h1 { font-size: 3rem; }
+            .nav-icon { height: 28px; } 
+            .logo-text { font-size: 1.2rem; } 
+            nav { padding: 15px 20px; }
         }
-        .photo-card:hover { transform: translateY(-10px); box-shadow: 0 20px 50px rgba(0, 0, 0, 0.08); background: #fff; z-index: 2; }
+
+        @keyframes expandBox {
+            from { transform: scale(0.95); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+
+        /* ================== 7. 瀑布流画廊 ================== */
+        .gallery-container {
+            width: 100%; max-width: 1600px; padding: 0 40px 100px; 
+            column-count: 4; column-gap: 30px; 
+            box-sizing: border-box;
+        }
+        @media (max-width: 1400px) { .gallery-container { column-count: 3; } }
+        @media (max-width: 1000px) { .gallery-container { column-count: 2; column-gap: 20px; } }
+        @media (max-width: 600px) { .gallery-container { column-count: 1; } }
+
+        /* 卡片设计 */
+        .photo-card {
+            break-inside: avoid; 
+            margin-bottom: 30px; 
+            border-radius: 16px; 
+            overflow: hidden;
+            background: rgba(255, 255, 255, 0.7); 
+            backdrop-filter: blur(20px); 
+            border: 1px solid rgba(255,255,255,0.6);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.02); 
+            transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+            opacity: 0; transform: translateY(40px); 
+            pointer-events: auto;
+            display: flex; flex-direction: column;
+        }
+
+        .photo-card:hover { 
+            transform: translateY(-10px); 
+            box-shadow: 0 25px 50px rgba(66, 133, 244, 0.15); /* 悬停蓝光 */
+            background: #fff; z-index: 2; 
+        }
+
         .media-wrapper { position: relative; width: 100%; overflow: hidden; border-bottom: 1px solid rgba(0,0,0,0.03); }
         .photo-card img, .photo-card video { width: 100%; display: block; transition: transform 0.6s cubic-bezier(0.25, 0.8, 0.25, 1); }
         .photo-card:hover img, .photo-card:hover video { transform: scale(1.05); }
+
         .card-info { padding: 18px 20px; }
-        .card-tag { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; color: #888; letter-spacing: 1px; margin-bottom: 6px; display: block; }
+        .card-tag { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; color: #4285F4; letter-spacing: 1px; margin-bottom: 6px; display: block; }
         .card-title { font-size: 1rem; font-weight: 700; color: #222; margin: 0; line-height: 1.4; }
-        .video-badge { position: absolute; top: 12px; right: 12px; background: rgba(0,0,0,0.6); color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: 700; pointer-events: none; backdrop-filter: blur(4px); z-index: 5; }
+        
+        .video-badge { 
+            position: absolute; top: 12px; right: 12px; 
+            background: rgba(0,0,0,0.6); color: white; padding: 4px 8px; border-radius: 4px; 
+            font-size: 0.7rem; font-weight: 700; pointer-events: none; backdrop-filter: blur(4px); z-index: 5; 
+        }
+        
         .photo-card.loaded { opacity: 1; transform: translateY(0); }
-        footer { padding: 40px; color: #888; font-size: 0.9rem; width: 100%; text-align: center; background: rgba(255,255,255,0.5); margin-top: auto; }
+
+        /* 页脚 */
+        footer { 
+            padding: 40px; color: #888; font-size: 0.9rem; width: 100%; text-align: center; 
+            background: rgba(255,255,255,0.5); 
+            margin-top: auto; /* 关键：沉底 */
+        }
     </style>
 </head>
 <body>
     
     <canvas id="canvas"></canvas>
 
+    <div id="splash-screen"></div>
+
     <nav>
         <a href="#" class="brand-container">
-            <svg class="nav-icon placeholder-svg" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <svg class="nav-icon" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M20 4L4 36H36L20 4Z" fill="url(#paint0_linear)"/>
                 <circle cx="20" cy="24" r="6" fill="white"/>
-                <defs>
-                    <linearGradient id="paint0_linear" x1="20" y1="4" x2="20" y2="36" gradientUnits="userSpaceOnUse">
-                        <stop stop-color="#4285F4"/>
-                        <stop offset="1" stop-color="#40E0D0"/>
-                    </linearGradient>
-                </defs>
+                <defs><linearGradient id="paint0_linear" x1="20" y1="4" x2="20" y2="36" gradientUnits="userSpaceOnUse"><stop stop-color="#4285F4"/><stop offset="1" stop-color="#40E0D0"/></linearGradient></defs>
             </svg>
-            <span class="logo-text">ART PORTFOLIO</span>
+            <span class="logo-text">ANTIGRAVITY</span>
         </a>
     </nav>
 
     <div class="content-layer" id="content">
         <div class="hero-section">
             <div class="title-wrapper">
-                <h1><span class="word-digital">DESIGN</span><span class="word-biology">PORTFOLIO.</span></h1>
-                <p class="subtitle">Check out the latest online display of the portfolio</p>
+                <h1><span class="word-digital">Digital</span><span class="word-biology">Biology.</span></h1>
+                <p class="subtitle">Exploring the boundary between code and life</p>
             </div>
+            
             <div class="filter-wrapper" id="filters"></div>
         </div>
+
         <div class="gallery-container" id="gallery"></div>
-        <footer>© 2026 Created by Zhangbling & Gemini</footer>
+        
+        <footer>© 2026 Created by User & Gemini</footer>
     </div>
 
     <script>
         // =========================================================
-        // 🔧 配置区 (动画参数未修改)
+        // 🔧 配置区 (粒子参数完全保留你的微调)
         // =========================================================
         
         const CONFIG = {
+            // 你的微调参数:
             introDuration: 200, explosionForce: 40, drag: 0.7, returnStrength: 0.01,
-            particleCount: 1500, clusterRadius: 450, clusterRatioX: 1.55, clusterRatioY: 1.0, minDistance: 24,
+            
+            // 基础配置
+            particleCount: 1000, clusterRadius: 380, clusterRatioX: 1.4, clusterRatioY: 1.0, minDistance: 24,
             voidBaseSize: 110, voidBreathing: 15, voidMoveSpeed: 0.002, voidWaitTime: 400,
             sizeMin: 1.0, sizeMax: 3.5, sizePeakPos: 0.85, aspectRatio: 1.6,
+            
+            // 🎨 颜色: 蓝 -> 绿松石 (护眼)
             colorBase: { r: 66, g: 133, b: 244 }, 
             colorHover: { r: 64, g: 224, b: 208 }, 
+            
+            // 🖱️ 交互: 变色范围缩小一半
             mouseRepelDist: 160, mouseSenseDist: 350, colorChangeDist: 180,
+            
+            // 动态
             noiseScale: 0.003, timeSpeed: 0.0002, minLife: 300, maxLife: 800, fadeSpeed: 0.02
         };
 
+        // 作品集分类 (带英文名)
         const CATEGORIES = [
-            { id: 'illustration', name: '写实风格' }, 
-            { id: 'character',    name: '欧美卡通' },
-            { id: 'scene',        name: 'icon设计' },
-            { id: 'sketch',       name: '角色原画' },
-            { id: 'other',        name: '其他摸鱼' },
+            { id: 'illustration', name: '商业插画', en: 'ILLUSTRATION' }, 
+            { id: 'character',    name: '角色设计', en: 'CHARACTER' },
+            { id: 'scene',        name: '场景概念', en: 'SCENE ART' },
+            { id: 'sketch',       name: '速写练习', en: 'SKETCHES' },
+            { id: 'other',        name: '其他摸鱼', en: 'EXPERIMENTS' },
         ];
         const SUPPORTED_FORMATS = ['.mp4', '.mov', '.gif', '.webp', '.jpg', '.png', '.jpeg'];
 
         // =========================================================
-        // 🌌 粒子动画引擎 (未修改)
+        // 🌌 粒子动画引擎
         // =========================================================
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
+        const splashScreen = document.getElementById('splash-screen');
         const contentLayer = document.getElementById('content');
 
         let width, height, DPR;
@@ -323,6 +419,7 @@
 
                 if (dist < CONFIG.mouseSenseDist) {
                     targetRotation = Math.atan2(mouse.y - baseY, mouse.x - baseX);
+                    // 🟢 变色逻辑：绿色
                     if (dist < CONFIG.colorChangeDist) {
                         const blend = 1 - (dist / CONFIG.colorChangeDist);
                         this.currentColor.r += (CONFIG.colorHover.r - this.currentColor.r) * 0.15 * blend;
@@ -399,28 +496,31 @@
         
         window.onload = () => {
             init(); animate();
-            setTimeout(() => { contentLayer.classList.add('visible'); }, 800);
+            setTimeout(() => { 
+                splashScreen.classList.add('hidden'); // 1s后移除遮罩
+            }, 1000);
+            setTimeout(() => { 
+                contentLayer.classList.add('visible'); // 0.8s显示内容(早一点)
+            }, 800);
         };
 
         // =========================================================
-        // 📂 作品集逻辑 (JS部分未修改)
+        // 📂 作品集逻辑
         // =========================================================
         const gallery = document.getElementById('gallery');
         const filters = document.getElementById('filters');
         let currentSessionId = 0;
 
         function initPortfolio() {
-            createFilterBtn('all', '全部作品');
-            CATEGORIES.forEach(cat => {
-                createFilterBtn(cat.id, cat.name);
-            });
+            createFilterBtn('all', '全部作品', 'ALL WORKS', true);
+            CATEGORIES.forEach(cat => createFilterBtn(cat.id, cat.name, cat.en));
             loadCategory('all');
         }
 
-        function createFilterBtn(id, zh) {
-            const btn = document.createElement('button');
-            btn.className = `filter-btn ${id === 'all' ? 'active' : ''}`;
-            btn.innerText = zh;
+        function createFilterBtn(id, zh, en, isActive=false) {
+            const btn = document.createElement('div');
+            btn.className = `filter-btn ${isActive ? 'active' : ''}`;
+            btn.innerHTML = `<span>${zh}</span><span style="font-size:0.7em;opacity:0.6;margin-left:4px">${en}</span>`;
             btn.onclick = () => switchFilter(id, btn);
             filters.appendChild(btn);
         }
@@ -491,15 +591,13 @@
         }
 
         initPortfolio();
-        
-        // [新增] 鼠标滚轮横向滚动支持
+
+        // 鼠标滚轮横滑逻辑
         const filterContainer = document.getElementById('filters');
-        
         filterContainer.addEventListener('wheel', (e) => {
-            // 如果容器内容宽度 大于 容器可视宽度，说明有滚动条
             if (filterContainer.scrollWidth > filterContainer.clientWidth) {
-                e.preventDefault(); // 阻止页面上下滚动
-                filterContainer.scrollLeft += e.deltaY; // 将垂直滚动转换为水平滚动
+                e.preventDefault();
+                filterContainer.scrollLeft += e.deltaY;
             }
         }, { passive: false });
 
