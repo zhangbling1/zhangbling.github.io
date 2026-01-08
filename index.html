@@ -9,16 +9,17 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Playfair+Display:ital,wght@1,600&display=swap" rel="stylesheet">
 
     <style>
-        /* ================== 1. 基础样式 ================== */
+        /* ================== 1. 基础重置 ================== */
         body { margin: 0; background-color: #f0f2f5; font-family: 'Inter', sans-serif; color: #1f1f1f; overflow-x: hidden; }
         canvas { display: block; position: fixed; top: 0; left: 0; z-index: -1; }
 
-        /* UI 容器 */
+        /* ================== 2. UI 框架 ================== */
         .content-layer {
             position: relative; z-index: 10; width: 100%; min-height: 100vh;
             display: flex; flex-direction: column; align-items: center;
             opacity: 0; transform: translateY(20px); transition: all 0.8s ease;
         }
+        /* 页面加载完成后显示 */
         .content-layer.visible { opacity: 1; transform: translateY(0); }
 
         /* 导航 */
@@ -32,7 +33,7 @@
         .nav-icon { height: 32px; width: auto; }
         .logo-text { font-family: 'Inter', sans-serif; font-weight: 800; font-size: 1.4rem; color: #1a1a1a; letter-spacing: -0.5px; text-transform: uppercase; }
 
-        /* Hero */
+        /* Hero 区域 */
         .hero-section { margin-top: 15vh; margin-bottom: 40px; text-align: center; }
         .title-wrapper h1 { font-size: 5.5rem; line-height: 1.0; margin: 0 0 10px 0; color: #1a1a1a; letter-spacing: -2px; }
         .word-digital { font-family: 'Inter', sans-serif; font-weight: 800; }
@@ -67,66 +68,57 @@
         }
 
         /* ================== 4. 瀑布流容器 ================== */
-        .galleries-wrapper { width: 100%; max-width: 1600px; padding: 0 40px 100px; box-sizing: border-box; }
-        
-        .gallery-pane {
-            display: none; 
-            align-items: flex-start; justify-content: center; gap: 30px; 
-            width: 100%;
+        .gallery-container { 
+            width: 100%; max-width: 1600px; padding: 0 40px 100px; box-sizing: border-box; 
+            display: flex; align-items: flex-start; justify-content: center; gap: 30px;
+            min-height: 50vh; 
         }
-        .gallery-pane.active { display: flex; }
-
         .masonry-column {
             flex: 1; display: flex; flex-direction: column; gap: 30px; min-width: 0;
         }
 
-        /* ================== 核心优化：卡片动效 (仿Pinterest) ================== */
+        /* ================== 核心优化：卡片动效 ================== */
         .photo-card {
             width: 100%; border-radius: 16px; overflow: hidden;
             background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.6);
             box-shadow: 0 4px 15px rgba(0,0,0,0.03); 
             
-            /* 优化点1：分离属性，只让必要属性产生动画 */
+            /* 交互动画：只针对阴影和位移，更流畅 */
             transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.4s ease;
             cursor: pointer; display: flex; flex-direction: column; position: relative;
             
-            /* 进场状态 */
+            /* 进场状态：透明 */
             opacity: 0; 
-            animation: cardEnter 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+            transform: translateY(30px);
         }
 
-        @keyframes cardEnter { 
-            from { opacity: 0; transform: translateY(40px); }
-            to { opacity: 1; transform: translateY(0); } 
-        }
-
-        /* 优化点2：悬停时，卡片只上浮，不缩放 (防止跳动) */
+        /* 鼠标悬停：卡片微微上浮（不缩放），阴影加深 */
         .photo-card:hover { 
             transform: translateY(-6px); 
-            box-shadow: 0 20px 40px rgba(66, 133, 244, 0.12); 
+            box-shadow: 0 20px 40px rgba(66, 133, 244, 0.15); 
             background: #fff; 
             z-index: 2; 
         }
         
         .media-wrapper { 
             position: relative; width: 100%; background: rgba(0,0,0,0.05); 
-            overflow: hidden; /* 关键：锁住图片放大的边界 */
+            overflow: hidden; /* 锁住图片边界 */
         }
         
         .photo-card img, .photo-card video { 
             width: 100%; height: 100%; display: block; object-fit: cover; 
-            /* 优化点3：图片在框内缓慢放大 */
+            /* 图片在框内缓慢放大 */
             transition: transform 0.6s cubic-bezier(0.2, 0.8, 0.2, 1); 
         }
         
-        /* 优化点4：悬停时，图片放大 1.05倍 (镜头推进感) */
+        /* 鼠标悬停：图片放大 1.05倍 (镜头推进感) */
         .photo-card:hover img, .photo-card:hover video { 
             transform: scale(1.05); 
         }
 
         .card-info { padding: 16px 20px; background: rgba(255,255,255,0.4); }
         .card-tag { font-size: 0.7rem; font-weight: 700; color: #4285F4; text-transform: uppercase; display: block; margin-bottom: 4px; }
-        .card-title { font-size: 0.95rem; font-weight: 800; color: #222; margin: 0; letter-spacing: 0.5px; }
+        .card-title { font-size: 0.95rem; font-weight: 800; color: #222; margin: 0; letter-spacing: 0.5px; text-transform: uppercase; }
         .video-badge { position: absolute; top: 10px; right: 10px; background: rgba(0,0,0,0.6); color: #fff; padding: 3px 6px; border-radius: 4px; font-size: 0.6rem; font-weight: 700; backdrop-filter: blur(4px); z-index: 5; }
 
         /* 灯箱 */
@@ -170,19 +162,35 @@
 
     <script>
         // =========================================================================
-        // 📝 【自定义标题区】
+        // 📝 【作品清单 - 你的核心控制台】
         // =========================================================================
-        // 在这里填写你想修改标题的图片
-        // 格式：'文件夹名/文件名.后缀': '你的标题'
+        // 请在这里像填空一样，添加你的作品。
+        // file: 图片在 images 文件夹下的路径。
+        // title: 作品标题。
+        // category: 分类ID (必须和下方 CATEGORIES 配置一致)。
         
-        const CUSTOM_TITLES = {
-            'CG Style/1.jpg': '黑暗之魂同人',
-            'CG Style/2.jpg': '赛博朋克设定',
-            'Cartoon/5.png': '开心小镇设定集',
-            // ... 没填的图片会自动显示默认英文标题 ...
-        };
+        const PROJECTS = [
+            // --- 示例：为了方便你，我用代码自动生成了 Cartoon 1-30 的列表 ---
+            // 你可以删除这段，手动一条条写。
+            
+            // 下面是手动填写的示例：
+            { file: 'CG Style/1.jpg',    title: '暗黑破坏神同人',   category: 'CG Style' },
+            { file: 'CG Style/2.jpg',    title: '废土遗迹场景',     category: 'CG Style' },
+            { file: 'Character/1.jpg',   title: '龙骑士设定',       category: 'Character' },
+            
+            // ... 在这里继续添加 ...
+        ];
 
-        // 🔧 基础配置 (这里的顺序决定了“全部作品”里的排列顺序)
+        // 💡 懒人福利：自动把 Cartoon 文件夹的 1~30.webp 加进去
+        for (let i = 1; i <= 30; i++) {
+            PROJECTS.push({
+                file: `Cartoon/${i}.webp`, // 假设是 webp 格式
+                title: `欧美卡通作品 ${i}`,
+                category: 'Cartoon'
+            });
+        }
+
+        // 🔧 基础配置 (不要改 ID)
         const CATEGORIES = [
             { id: 'CG Style',    name: 'CG风格',    en: 'CG Style' }, 
             { id: 'Cartoon',     name: '欧美卡通',  en: 'Cartoon' },
@@ -190,7 +198,6 @@
             { id: 'Character',   name: '角色原画',  en: 'Character' },
             { id: 'Other',       name: '其他类型',  en: 'Other' },
         ];
-        const SUPPORTED_FORMATS = ['.mp4', '.mov', '.gif', '.webp', '.jpg', '.png', '.jpeg'];
         
         // 🔧 动画配置
         const CONFIG = {
@@ -204,25 +211,20 @@
         };
 
         // -------------------------------------------------------------------------
-        // 🚀 核心逻辑
+        // 🚀 核心逻辑 (不需要动)
         // -------------------------------------------------------------------------
+        
         const filters = document.getElementById('filters');
-        const galleriesRoot = document.getElementById('galleries-root');
+        const galleryContainer = document.getElementById('gallery-container');
         const lightbox = document.getElementById('lightbox');
         const lightboxContent = document.getElementById('lightbox-content');
         let columnHeights = [];
         let columnsDOM = [];
-        
-        // 🚀 缓冲队列：用于排序
-        let pendingItems = {}; 
 
         function initPortfolio() {
             createFilterBtn('all', '全部作品', 'ALL WORKS', true);
             CATEGORIES.forEach(cat => createFilterBtn(cat.id, cat.name, cat.en));
             loadCategory('all');
-            
-            // 启动定时器，定期处理加载到的图片
-            setInterval(processQueue, 200);
         }
 
         function createFilterBtn(id, zh, en, isActive=false) {
@@ -240,9 +242,8 @@
         }
 
         function loadCategory(filterId) {
-            galleriesRoot.innerHTML = ''; 
+            galleryContainer.innerHTML = ''; 
             columnHeights = []; columnsDOM = [];
-            pendingItems = {}; // 切换分类时清空队列
 
             // 1. 响应式计算列数
             let colCount = 4;
@@ -255,162 +256,90 @@
             for (let i = 0; i < colCount; i++) {
                 const col = document.createElement('div');
                 col.className = 'masonry-column';
-                galleriesRoot.appendChild(col);
+                galleryContainer.appendChild(col);
                 columnsDOM.push(col);
                 columnHeights.push(0);
             }
 
-            // 3. 启动侦察兵
-            const targetCats = (filterId === 'all') ? CATEGORIES : CATEGORIES.filter(c => c.id === filterId);
-            
-            targetCats.forEach((cat, catIndex) => {
-                // catIndex 用于排序：0 是第一个文件夹，1 是第二个...
-                for (let i = 1; i <= 5; i++) {
-                    startScout(cat.id, cat.name, cat.en, i, filterId, catIndex);
+            // 3. 筛选数据
+            let items = (filterId === 'all') ? [...PROJECTS] : PROJECTS.filter(p => p.category === filterId);
+
+            // 4. 排序 (分组排序，防止同文件夹的图被打散)
+            // 规则：先按“分类”排，再按“添加顺序”排
+            if (filterId === 'all') {
+                items.sort((a, b) => {
+                    const indexA = CATEGORIES.findIndex(c => c.id === a.category);
+                    const indexB = CATEGORIES.findIndex(c => c.id === b.category);
+                    return indexA - indexB;
+                });
+            }
+
+            // 5. 顺序处理 (保证不闪烁)
+            processItemsSequentially(items);
+        }
+
+        async function processItemsSequentially(items) {
+            for (let i = 0; i < items.length; i++) {
+                const item = items[i];
+                
+                // 找最短列
+                let minIndex = 0;
+                for (let j = 1; j < columnHeights.length; j++) {
+                    if (columnHeights[j] < columnHeights[minIndex]) minIndex = j;
                 }
-            });
+
+                // 创建卡片
+                const card = createCardDOM(item);
+                columnsDOM[minIndex].appendChild(card);
+
+                // 预加载获取高度权重
+                const ratio = await preloadImage(`images/${item.file}`);
+                columnHeights[minIndex] += (1 / ratio);
+                
+                // 优雅进场：稍作延迟，让布局稳定
+                setTimeout(() => {
+                    card.style.opacity = 1;
+                    card.style.transform = 'translateY(0)';
+                }, 50);
+            }
         }
 
         function preloadImage(url) {
-            return new Promise((resolve) => {
+            return new Promise(resolve => {
                 const img = new Image();
-                img.onload = () => resolve({ ratio: img.width / img.height });
-                img.onerror = () => resolve(null);
                 img.src = url;
+                img.onload = () => resolve(img.width / img.height);
+                img.onerror = () => resolve(1.6); // 失败保底
             });
-        }
-
-        async function startScout(folder, catName, catEn, index, catId, catOrder, errors = 0) {
-            if (errors > 3 || index > 500) return;
-
-            const mediaInfo = await findMedia(folder, index);
-
-            if (mediaInfo) {
-                let dimensions = { ratio: 1.6 }; 
-                if (mediaInfo.type === 'image') {
-                    const loadedDim = await preloadImage(mediaInfo.src);
-                    if (loadedDim) dimensions = loadedDim;
-                } else {
-                    dimensions = { ratio: 1.77 }; 
-                }
-
-                // 放入队列，等待排序
-                if (!pendingItems[catId]) pendingItems[catId] = [];
-                
-                // 📝 匹配自定义标题
-                const fileKey = `${folder}/${index}${mediaInfo.ext}`; 
-                const customTitle = CUSTOM_TITLES[fileKey];
-
-                pendingItems[catId].push({ 
-                    index, 
-                    media: mediaInfo, 
-                    catName, 
-                    displayTitle: customTitle || catEn, 
-                    catOrder, // 👈 关键：带着文件夹的序号
-                    ratio: dimensions.ratio
-                });
-
-                // 继续找
-                startScout(folder, catName, catEn, index + 5, catId, catOrder, 0);
-            } else {
-                startScout(folder, catName, catEn, index + 5, catId, catOrder, errors + 1);
-            }
-        }
-
-        // 🚀 队列处理器：核心排序逻辑
-        function processQueue() {
-            // 获取当前激活的分类ID
-            const activeBtn = document.querySelector('.filter-btn.active');
-            if (!activeBtn) return;
-            // 这里我们简化处理，实际上只有一个 catId 在运作（就是当前视图的id）
-            // 我们遍历 pendingItems 的键
-            for (let catId in pendingItems) {
-                const items = pendingItems[catId];
-                if (items.length === 0) continue;
-
-                // 🌟 排序规则：
-                // 1. 优先按 catOrder (文件夹顺序) 排序
-                // 2. 同文件夹内，按 index (文件名数字) 倒序，大的在前
-                items.sort((a, b) => {
-                    if (a.catOrder !== b.catOrder) {
-                        return a.catOrder - b.catOrder; // 文件夹 0, 1, 2...
-                    }
-                    return b.index - a.index; // 文件 30, 29, 28...
-                });
-
-                // 渲染
-                items.forEach(item => {
-                    // 找最短列
-                    let minIndex = 0;
-                    for (let i = 1; i < columnHeights.length; i++) {
-                        if (columnHeights[i] < columnHeights[minIndex]) {
-                            minIndex = i;
-                        }
-                    }
-                    
-                    const card = createCardDOM(item);
-                    columnsDOM[minIndex].appendChild(card);
-                    
-                    // 更新高度
-                    columnHeights[minIndex] += (1 / item.ratio); 
-                    
-                    // 进场
-                    setTimeout(() => {
-                        card.style.opacity = 1;
-                        card.style.transform = 'translateY(0)';
-                    }, 50);
-                });
-
-                // 清空已处理
-                pendingItems[catId] = [];
-            }
         }
 
         function createCardDOM(item) {
             const div = document.createElement('div');
             div.className = 'photo-card';
-            div.style.opacity = 0;
-            div.style.transform = 'translateY(20px)';
             
-            let mediaHtml = '';
-            if (item.media.type === 'video') {
-                mediaHtml = `<video src="${item.media.src}" autoplay muted loop playsinline></video><div class="video-badge">VIDEO</div>`;
-            } else {
-                mediaHtml = `<img src="${item.media.src}" alt="${item.catName}" loading="lazy">`;
-            }
+            const isVideo = item.file.match(/\.(mp4|mov)$/i);
+            const src = `images/${item.file}`;
+
+            let mediaHtml = isVideo 
+                ? `<video src="${src}" autoplay muted loop playsinline></video><div class="video-badge">VIDEO</div>`
+                : `<img src="${src}" alt="${item.title}" loading="lazy">`;
+
             div.innerHTML = `
-                <div class="media-wrapper" style="aspect-ratio: ${item.ratio}">
-                    ${mediaHtml}
-                </div>
+                <div class="media-wrapper">${mediaHtml}</div>
                 <div class="card-info">
-                    <span class="card-tag">${item.catName}</span>
-                    <h3 class="card-title">${item.displayTitle}</h3>
+                    <span class="card-tag">${item.category}</span>
+                    <h3 class="card-title">${item.title}</h3>
                 </div>
             `;
-            div.onclick = () => openLightbox(item.media);
+            div.onclick = () => openLightbox(src, isVideo);
             return div;
         }
 
-        function findMedia(folder, index) {
-            return new Promise(async resolve => {
-                for (let ext of SUPPORTED_FORMATS) {
-                    const src = `images/${folder}/${index}${ext}`;
-                    try {
-                        const res = await fetch(src, { method: 'HEAD' });
-                        if (res.ok) {
-                            const isVideo = ext === '.mp4' || ext === '.mov';
-                            resolve({ src, type: isVideo ? 'video' : 'image', ext });
-                            return;
-                        }
-                    } catch(e) {}
-                }
-                resolve(null);
-            });
-        }
-
         // 灯箱
-        function openLightbox(media) {
-            let content = media.type === 'video' ? `<video src="${media.src}" autoplay loop controls playsinline></video>` : `<img src="${media.src}">`;
+        function openLightbox(src, isVideo) {
+            let content = isVideo 
+                ? `<video src="${src}" autoplay loop controls playsinline></video>`
+                : `<img src="${src}">`;
             lightboxContent.innerHTML = content;
             lightbox.classList.add('active');
         }
@@ -429,12 +358,11 @@
             }, 300);
         });
 
-        // 粒子动画 (完整版)
+        // 粒子动画 (完整无缺)
         const contentLayer = document.getElementById('content');
         let width, height, DPR;
         let particles = [];
         const mouse = { x: -5000, y: -5000 };
-        let frameCount = 0;
         const Simplex=(function(){const p=new Uint8Array([151,160,137,91,90,15,131,13,201,95,96,53,194,233,7,225,140,36,103,30,69,142,8,99,37,240,21,10,23,190,6,148,247,120,234,75,0,26,197,62,94,252,219,203,117,35,11,32,57,177,33,88,237,149,56,87,174,20,125,136,171,168,68,175,74,165,71,134,139,48,27,166,77,146,158,231,83,111,229,122,60,211,133,230,220,105,92,41,55,46,245,40,244,102,143,54,65,25,63,161,1,216,80,73,209,76,132,187,208,89,18,169,200,196,135,130,116,188,159,86,164,100,109,198,173,186,3,64,52,217,226,250,124,123,5,202,38,147,118,126,255,82,85,212,207,206,59,227,47,16,58,17,182,189,28,42,223,183,170,213,119,248,152,2,44,154,163,70,221,153,101,155,167,43,172,9,129,22,39,253,19,98,108,110,79,113,224,232,178,185,112,104,218,246,97,228,251,34,242,193,238,210,144,12,191,179,162,241,81,51,145,235,249,14,239,107,49,192,214,31,181,199,106,157,184,84,204,176,115,121,50,45,127,4,150,254,138,236,205,93,222,114,67,29,24,72,243,141,128,195,78,66,215,61,156,180]);const perm=new Uint8Array(512);for(let i=0;i<512;i++)perm[i]=p[i&255];const grad3=[[1,1,0],[-1,1,0],[1,-1,0],[-1,-1,0],[1,0,1],[-1,0,1],[1,0,-1],[-1,0,-1],[0,1,1],[0,-1,1],[0,1,-1],[0,-1,-1]];return{noise3D:(x,y,z)=>{let n0,n1,n2,n3;const F3=1.0/3.0,s=(x+y+z)*F3,i=Math.floor(x+s),j=Math.floor(y+s),k=Math.floor(z+s);const G3=1.0/6.0,t=(i+j+k)*G3,X0=i-t,Y0=j-t,Z0=k-t,x0=x-X0,y0=y-Y0,z0=z-Z0;let i1,j1,k1,i2,j2,k2;if(x0>=y0){if(y0>=z0){i1=1;j1=0;k1=0;i2=1;j2=1;k2=0;}else if(x0>=z0){i1=1;j1=0;k1=0;i2=1;j2=0;k2=1;}else{i1=0;j1=0;k1=1;i2=1;j2=0;k2=1;}}else{if(y0<z0){i1=0;j1=0;k1=1;i2=0;j2=1;k2=1;}else if(x0<z0){i1=0;j1=1;k1=0;i2=0;j2=1;k2=1;}else{i1=0;j1=1;k1=0;i2=1;j2=1;k2=0;}}const x1=x0-i1+G3,y1=y0-j1+G3,z1=z0-k1+G3,x2=x0-i2+2.0*G3,y2=y0-j2+2.0*G3,z2=z0-k2+2.0*G3,x3=x0-1.0+3.0*G3,y3=y0-1.0+3.0*G3,z3=z0-1.0+3.0*G3;const ii=i&255,jj=j&255,kk=k&255;const gi0=perm[ii+perm[jj+perm[kk]]]%12,gi1=perm[ii+i1+perm[jj+j1+perm[kk+k1]]]%12,gi2=perm[ii+i2+perm[jj+j2+perm[kk+k2]]]%12,gi3=perm[ii+1+perm[jj+1+perm[kk+1]]]%12;let t0=0.6-x0*x0-y0*y0-z0*z0;if(t0<0)n0=0.0;else{t0*=t0;n0=t0*t0*(grad3[gi0][0]*x0+grad3[gi0][1]*y0+grad3[gi0][2]*z0);}let t1=0.6-x1*x1-y1*y1-z1*z1;if(t1<0)n1=0.0;else{t1*=t1;n1=t1*t1*(grad3[gi1][0]*x1+grad3[gi1][1]*y1+grad3[gi1][2]*z1);}let t2=0.6-x2*x2-y2*y2-z2*z2;if(t2<0)n2=0.0;else{t2*=t2;n2=t2*t2*(grad3[gi2][0]*x2+grad3[gi2][1]*y2+grad3[gi2][2]*z2);}let t3=0.6-x3*x3-y3*y3-z3*z3;if(t3<0)n3=0.0;else{t3*=t3;n3=t3*t3*(grad3[gi3][0]*x3+grad3[gi3][1]*y3+grad3[gi3][2]*z3);}return 32.0*(n0+n1+n2+n3);}}})();
         function init(){DPR=window.devicePixelRatio||1;width=window.innerWidth;height=window.innerHeight;canvas.width=width*DPR;canvas.height=height*DPR;canvas.style.width=width+'px';canvas.style.height=height+'px';ctx.scale(DPR,DPR);particles=[];for(let i=0;i<CONFIG.particleCount*3;i++){if(particles.length>=CONFIG.particleCount)break;const a=Math.random()*Math.PI*2;const r=Math.sqrt(Math.random())*CONFIG.clusterRadius;const x=width/2+Math.cos(a)*r*CONFIG.clusterRatioX;const y=height/2+Math.sin(a)*r*CONFIG.clusterRatioY;let ok=true;for(let p of particles){const dx=p.homeX-x;const dy=p.homeY-y;if(dx*dx+dy*dy<CONFIG.minDistance*CONFIG.minDistance){ok=false;break;}}if(ok)particles.push(new BioParticle(x,y));}GhostVoid.init();}
         function animate(){ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,canvas.width,canvas.height);ctx.scale(DPR,DPR);frameCount++;GhostVoid.update(frameCount);const ex=frameCount<200;particles.forEach(p=>{p.update(frameCount,ex);p.draw();});requestAnimationFrame(animate);}
