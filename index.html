@@ -13,14 +13,13 @@
         body { margin: 0; background-color: #f0f2f5; font-family: 'Inter', sans-serif; color: #1f1f1f; overflow-x: hidden; }
         canvas { display: block; position: fixed; top: 0; left: 0; z-index: -1; }
 
-        /* ================== 2. UI 框架 ================== */
         .content-layer {
             position: relative; z-index: 10; width: 100%; min-height: 100vh;
             display: flex; flex-direction: column; align-items: center;
             opacity: 1; 
         }
 
-        /* 顶部导航 (固定) */
+        /* 导航 */
         nav {
             position: fixed; top: 0; left: 0; right: 0; height: 72px; padding: 0 40px;
             display: flex; justify-content: space-between; align-items: center;
@@ -32,36 +31,24 @@
         .nav-icon { height: 32px; width: auto; }
         .logo-text { font-family: 'Inter', sans-serif; font-weight: 800; font-size: 1.4rem; color: #1a1a1a; letter-spacing: -0.5px; text-transform: uppercase; }
 
-        /* Hero 区域 */
+        /* Hero */
         .hero-section { margin-top: 18vh; margin-bottom: 30px; text-align: center; }
         .title-wrapper h1 { font-size: 5.5rem; line-height: 1.0; margin: 0 0 10px 0; color: #1a1a1a; letter-spacing: -2px; }
         .word-digital { font-family: 'Inter', sans-serif; font-weight: 800; }
         .word-biology { font-family: 'Playfair Display', serif; font-style: italic; font-weight: 600; }
         .hero-section p { font-size: 0.9rem; color: #666; letter-spacing: 1px; margin-top: 20px; }
 
-        /* ================== 3. 筛选栏 (吸顶核心修复) ================== */
+        /* 筛选栏 (吸顶) */
         .filter-container {
-            /* 关键：使用 sticky 实现吸顶 */
-            position: sticky;
-            top: 72px; /* 这里的数值要等于导航栏的高度 */
-            z-index: 90;
-            width: 100%;
-            padding: 15px 0;
-            background: rgba(240, 242, 245, 0.95); /* 接近背景色，带一点透明 */
-            backdrop-filter: blur(10px);
-            display: flex;
-            justify-content: center;
-            transition: all 0.3s ease;
-            /* 加个下划线阴影，更有层次感 */
+            position: sticky; top: 72px; z-index: 90; width: 100%; padding: 15px 0;
+            background: rgba(240, 242, 245, 0.95); backdrop-filter: blur(10px);
+            display: flex; justify-content: center; transition: all 0.3s ease;
             box-shadow: 0 1px 0px rgba(0,0,0,0.05); 
         }
-
         .filter-wrapper {
             display: flex; gap: 8px; justify-content: center;
-            background: rgba(255,255,255,0.6); 
-            padding: 6px; border-radius: 50px;
-            border: 1px solid rgba(255,255,255,0.6);
-            box-shadow: 0 4px 20px rgba(0,0,0,0.03);
+            background: rgba(255,255,255,0.6); padding: 6px; border-radius: 50px;
+            border: 1px solid rgba(255,255,255,0.6); box-shadow: 0 4px 20px rgba(0,0,0,0.03);
             flex-wrap: wrap;
         }
         .filter-btn {
@@ -78,21 +65,19 @@
         @media (max-width: 600px) {
             .hero-section { padding: 0 20px; margin-top: 12vh; }
             .title-wrapper h1 { font-size: 3rem; }
-            .filter-container { top: 60px; padding: 10px 0; } /* 手机端导航可能变矮，这里微调 */
+            .filter-container { top: 60px; padding: 10px 0; }
             nav { padding: 0 20px; height: 60px; }
             .filter-wrapper { display: grid; grid-template-columns: repeat(3, 1fr); width: 90%; border-radius: 20px; padding: 5px; }
             .filter-btn { padding: 8px 0; width: 100%; }
         }
 
-        /* ================== 4. 瀑布流容器 ================== */
+        /* 瀑布流容器 */
         .galleries-wrapper { 
             width: 100%; max-width: 1600px; padding: 20px 40px 100px; box-sizing: border-box; 
             display: flex; align-items: flex-start; justify-content: center; gap: 30px;
             min-height: 50vh; 
         }
-        .masonry-column {
-            flex: 1; display: flex; flex-direction: column; gap: 30px; min-width: 0;
-        }
+        .masonry-column { flex: 1; display: flex; flex-direction: column; gap: 30px; min-width: 0; }
 
         /* 卡片设计 */
         .photo-card {
@@ -101,8 +86,6 @@
             box-shadow: 0 4px 15px rgba(0,0,0,0.03); 
             transition: transform 0.3s ease, box-shadow 0.3s ease;
             cursor: pointer; display: flex; flex-direction: column; position: relative;
-            
-            /* 进场动画 */
             opacity: 0; animation: cardEnter 0.5s ease forwards;
         }
         @keyframes cardEnter { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
@@ -114,7 +97,7 @@
 
         .card-info { padding: 16px 20px; background: rgba(255,255,255,0.4); }
         .card-tag { font-size: 0.7rem; font-weight: 700; color: #4285F4; text-transform: uppercase; display: block; margin-bottom: 4px; }
-        .card-title { font-size: 0.95rem; font-weight: 800; color: #222; margin: 0; letter-spacing: 0.5px; text-transform: uppercase; }
+        .card-title { font-size: 0.95rem; font-weight: 800; color: #222; margin: 0; letter-spacing: 0.5px; }
         .video-badge { position: absolute; top: 10px; right: 10px; background: rgba(0,0,0,0.6); color: #fff; padding: 3px 6px; border-radius: 4px; font-size: 0.6rem; font-weight: 700; backdrop-filter: blur(4px); z-index: 5; pointer-events: none;}
 
         /* 灯箱 */
@@ -161,7 +144,7 @@
 
     <script>
         // =========================================================================
-        // 🔧 配置区 (请确保文件夹名完全一致)
+        // 🔧 配置区
         // =========================================================================
         const CATEGORIES = [
             { id: 'CG Style',    name: 'CG风格',    en: 'CG Style' }, 
@@ -171,9 +154,9 @@
             { id: 'Other',       name: '其他类型',  en: 'Other' },
         ];
 
-        // ⚠️ 扩展名检测逻辑 (视频必须放在后面，但代码会优先检测)
+        // 尝试加载的格式 (视频放在后面检测)
         const EXTENSIONS = ['.webp', '.jpg', '.png', '.jpeg', '.gif', '.mp4', '.mov']; 
-        const MAX_GUESS = 200; // 每个分类最大扫描数
+        const MAX_GUESS = 200; // 最大扫描数
 
         // 自定义标题
         const CUSTOM_TITLES = {
@@ -207,8 +190,6 @@
         function initPortfolio() {
             createFilterBtn('all', '全部作品', 'ALL WORKS', true);
             CATEGORIES.forEach(cat => createFilterBtn(cat.id, cat.name, cat.en));
-            
-            // 启动盲盒扫描
             startBlindScan();
         }
 
@@ -221,7 +202,7 @@
                 btn.classList.add('active');
                 currentFilter = id;
                 renderLayout(); 
-                // 切换时自动吸顶 (如果滚得太远的话)
+                // 吸顶回滚
                 const filterTop = document.querySelector('.filter-container').offsetTop;
                 if(window.scrollY > filterTop) {
                     window.scrollTo({ top: filterTop - 80, behavior: 'smooth' });
@@ -234,8 +215,7 @@
             galleriesRoot.innerHTML = '';
             columnsDOM = [];
             
-            // 强制列数逻辑
-            let colCount = 4; // 电脑 > 1000px
+            let colCount = 4; // 电脑 4 列
             const w = window.innerWidth;
             if (w <= 600) colCount = 1; 
             else if (w <= 1000) colCount = 2; 
@@ -250,12 +230,10 @@
 
         function startBlindScan() {
             createColumns(); 
-
             CATEGORIES.forEach((cat, catIndex) => {
                 for (let i = 1; i <= MAX_GUESS; i++) {
                     EXTENSIONS.forEach(ext => {
                         const src = `images/${cat.id}/${i}${ext}`;
-                        // 智能判断是图片还是视频
                         if (ext === '.mp4' || ext === '.mov') {
                             tryLoadVideo(src, cat, i, ext, catIndex);
                         } else {
@@ -266,31 +244,49 @@
             });
         }
 
-        // 🌟 视频加载器 (修复 MP4 不显示的问题)
+        // 🌟 强力视频加载器 (修复MP4问题)
         function tryLoadVideo(src, cat, index, ext, catOrder) {
             const video = document.createElement('video');
             video.src = src;
-            video.preload = 'metadata'; // 只加载元数据，快
-            
-            video.onloadedmetadata = function() {
-                // 加载成功！
-                addItem(src, cat, index, ext, catOrder, this.videoWidth, this.videoHeight);
+            video.muted = true; // 关键：静音才能在后台加载
+            video.playsInline = true;
+            video.preload = 'auto'; // 强制加载
+
+            // 监听多个事件，确保检测到
+            const onLoaded = function() {
+                if(video.hasLoaded) return; // 防止重复添加
+                video.hasLoaded = true;
+                
+                // 获取尺寸，如果没有获取到，默认16:9
+                const w = this.videoWidth || 1600;
+                const h = this.videoHeight || 900;
+                
+                addItem(src, cat, index, ext, catOrder, w, h);
+                
+                // 既然存在，就不用占内存了，页面上的卡片会重新加载
+                video.src = "";
+                video.load();
             };
+
+            video.onloadedmetadata = onLoaded;
+            video.onloadeddata = onLoaded;
+            video.oncanplay = onLoaded;
+            
             video.onerror = function() { /* 失败忽略 */ };
+            
+            // 尝试触发
+            video.load(); 
         }
 
-        // 图片加载器
         function tryLoadImage(src, cat, index, ext, catOrder) {
             const img = new Image();
             img.src = src;
-            
             img.onload = function() {
                 addItem(src, cat, index, ext, catOrder, this.width, this.height);
             };
             img.onerror = function() { /* 失败忽略 */ };
         }
 
-        // 统一添加数据
         function addItem(src, cat, index, ext, catOrder, width, height) {
             const fileKey = `${cat.id}/${index}${ext}`;
             const customTitle = CUSTOM_TITLES[fileKey];
@@ -319,7 +315,6 @@
             layoutTimer = setTimeout(renderLayout, 100);
         }
 
-        // 渲染布局
         function renderLayout() {
             let items = (currentFilter === 'all') 
                 ? loadedItems 
@@ -348,11 +343,8 @@
                 }
 
                 columnsDOM[minIndex].appendChild(item.dom);
-                
-                // 强制触发重绘，防止不显示
                 item.dom.style.opacity = 1;
                 item.dom.style.transform = 'translateY(0)';
-
                 colHeights[minIndex] += (1 / item.ratio);
             });
         }
@@ -377,21 +369,12 @@
             `;
             div.onclick = () => openLightbox(item.src, isVideo);
             
-            // 视频卡片鼠标悬停控制
             if(isVideo) {
-                div.onmouseenter = () => {
-                    const v = div.querySelector('video');
-                    if(v) v.play();
-                }
-                div.onmouseleave = () => {
-                    const v = div.querySelector('video');
-                    // if(v) v.pause(); // 可选：移出暂停
-                }
+                div.onmouseenter = () => { const v = div.querySelector('video'); if(v) v.play(); }
             }
             return div;
         }
 
-        // 灯箱
         function openLightbox(src, isVideo) {
             let content = isVideo 
                 ? `<video src="${src}" autoplay loop controls playsinline></video>`
