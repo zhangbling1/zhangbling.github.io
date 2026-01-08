@@ -13,6 +13,7 @@
         body { margin: 0; background-color: #f0f2f5; font-family: 'Inter', sans-serif; color: #1f1f1f; overflow-x: hidden; }
         canvas { display: block; position: fixed; top: 0; left: 0; z-index: -1; }
 
+        /* ================== 2. UI 框架 ================== */
         .content-layer {
             position: relative; z-index: 10; width: 100%; min-height: 100vh;
             display: flex; flex-direction: column; align-items: center;
@@ -79,18 +80,31 @@
         }
         .masonry-column { flex: 1; display: flex; flex-direction: column; gap: 30px; min-width: 0; }
 
-        /* 卡片设计 */
+        /* ================== 卡片设计 (增加发光特效) ================== */
         .photo-card {
             width: 100%; border-radius: 16px; overflow: hidden;
-            background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.6);
+            background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(12px); 
+            border: 1px solid rgba(255,255,255,0.6); /* 初始边框 */
             box-shadow: 0 4px 15px rgba(0,0,0,0.03); 
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            
+            /* ⚡️ 增加 border-color 的过渡，让发光更柔和 */
+            transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
             cursor: pointer; display: flex; flex-direction: column; position: relative;
+            
             opacity: 0; animation: cardEnter 0.5s ease forwards;
         }
         @keyframes cardEnter { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
 
-        .photo-card:hover { transform: translateY(-5px); box-shadow: 0 20px 40px rgba(66, 133, 244, 0.15); background: #fff; z-index: 2; }
+        .photo-card:hover { 
+            transform: translateY(-5px); 
+            /* ⚡️ 悬停时：加深阴影 + 增加蓝色外发光 (0 0 20px) */
+            box-shadow: 0 20px 40px rgba(66, 133, 244, 0.15), 0 0 20px rgba(66, 133, 244, 0.25); 
+            background: #fff; 
+            z-index: 2;
+            /* ⚡️ 悬停时：边框变蓝 */
+            border-color: rgba(66, 133, 244, 0.6);
+        }
+        
         .media-wrapper { position: relative; width: 100%; background: rgba(0,0,0,0.05); overflow: hidden; }
         .photo-card img, .photo-card video { width: 100%; height: auto; display: block; transition: transform 0.6s ease; }
         .photo-card:hover img, .photo-card:hover video { transform: scale(1.05); }
@@ -154,9 +168,9 @@
             { id: 'Other',       name: '其他类型',  en: 'Other' },
         ];
 
-        // 尝试加载的格式 (视频放在后面检测)
+        // 扩展名检测逻辑
         const EXTENSIONS = ['.webp', '.jpg', '.png', '.jpeg', '.gif', '.mp4', '.mov']; 
-        const MAX_GUESS = 200; // 最大扫描数
+        const MAX_GUESS = 200; 
 
         // 自定义标题
         const CUSTOM_TITLES = {
@@ -202,7 +216,6 @@
                 btn.classList.add('active');
                 currentFilter = id;
                 renderLayout(); 
-                // 吸顶回滚
                 const filterTop = document.querySelector('.filter-container').offsetTop;
                 if(window.scrollY > filterTop) {
                     window.scrollTo({ top: filterTop - 80, behavior: 'smooth' });
@@ -215,7 +228,7 @@
             galleriesRoot.innerHTML = '';
             columnsDOM = [];
             
-            let colCount = 4; // 电脑 4 列
+            let colCount = 4; 
             const w = window.innerWidth;
             if (w <= 600) colCount = 1; 
             else if (w <= 1000) colCount = 2; 
@@ -244,26 +257,20 @@
             });
         }
 
-        // 🌟 强力视频加载器 (修复MP4问题)
+        // 强力视频加载器
         function tryLoadVideo(src, cat, index, ext, catOrder) {
             const video = document.createElement('video');
             video.src = src;
-            video.muted = true; // 关键：静音才能在后台加载
+            video.muted = true; 
             video.playsInline = true;
-            video.preload = 'auto'; // 强制加载
+            video.preload = 'auto'; 
 
-            // 监听多个事件，确保检测到
             const onLoaded = function() {
-                if(video.hasLoaded) return; // 防止重复添加
+                if(video.hasLoaded) return; 
                 video.hasLoaded = true;
-                
-                // 获取尺寸，如果没有获取到，默认16:9
                 const w = this.videoWidth || 1600;
                 const h = this.videoHeight || 900;
-                
                 addItem(src, cat, index, ext, catOrder, w, h);
-                
-                // 既然存在，就不用占内存了，页面上的卡片会重新加载
                 video.src = "";
                 video.load();
             };
@@ -271,10 +278,7 @@
             video.onloadedmetadata = onLoaded;
             video.onloadeddata = onLoaded;
             video.oncanplay = onLoaded;
-            
             video.onerror = function() { /* 失败忽略 */ };
-            
-            // 尝试触发
             video.load(); 
         }
 
@@ -320,7 +324,6 @@
                 ? loadedItems 
                 : loadedItems.filter(item => item.catId === currentFilter);
 
-            // 排序: 正序 (1, 2, 3...)
             items.sort((a, b) => {
                 if (currentFilter === 'all') {
                     if (a.catOrder !== b.catOrder) return a.catOrder - b.catOrder;
