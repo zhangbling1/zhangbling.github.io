@@ -11,6 +11,8 @@
     <style>
         /* ================== 1. 基础重置 ================== */
         body { margin: 0; background-color: #f0f2f5; font-family: 'Inter', sans-serif; color: #1f1f1f; overflow-x: hidden; }
+        
+        /* 粒子画布 */
         canvas { display: block; position: fixed; top: 0; left: 0; z-index: -1; }
 
         /* ================== 2. UI 框架 ================== */
@@ -85,6 +87,7 @@
             transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), box-shadow 0.3s ease;
             cursor: pointer; display: flex; flex-direction: column; position: relative;
             
+            /* 进场动画：只有第一次创建时会播，后面移动时不会闪 */
             opacity: 0; animation: cardEnter 0.5s ease forwards;
         }
         @keyframes cardEnter { to { opacity: 1; transform: translateY(0); } }
@@ -97,7 +100,7 @@
 
         .card-info { padding: 16px 20px; background: rgba(255,255,255,0.4); }
         .card-tag { font-size: 0.7rem; font-weight: 700; color: #4285F4; text-transform: uppercase; display: block; margin-bottom: 4px; }
-        .card-title { font-size: 0.95rem; font-weight: 800; color: #222; margin: 0; letter-spacing: 0.5px; }
+        .card-title { font-size: 0.95rem; font-weight: 800; color: #222; margin: 0; letter-spacing: 0.5px; text-transform: uppercase; }
         .video-badge { position: absolute; top: 10px; right: 10px; background: rgba(0,0,0,0.6); color: #fff; padding: 3px 6px; border-radius: 4px; font-size: 0.6rem; font-weight: 700; backdrop-filter: blur(4px); z-index: 5; }
 
         /* 灯箱 */
@@ -151,9 +154,9 @@
             { id: 'Other',       name: '其他类型',  en: 'Other' },
         ];
 
-        // 尝试加载的格式 (顺序很重要，常用的放前面)
-        const EXTENSIONS = ['.webp', '.jpg', '.png', '.jpeg', '.gif']; 
-        const MAX_GUESS = 100; // ⚠️ 每个分类尝试加载前 100 张图 (不够就改大)
+        // 尝试加载的格式
+        const EXTENSIONS = ['.webp', '.jpg', '.png', '.jpeg', '.gif', '.mp4', '.mov']; 
+        const MAX_GUESS = 200; // 每个分类最大扫描数
 
         // 自定义标题 (可选)
         const CUSTOM_TITLES = {
@@ -173,26 +176,25 @@
         };
 
         // -----------------------------------------------------------
-        // 🚀 核心逻辑 (补全了缺失的函数！！！)
+        // 🚀 核心逻辑 (无闪烁防抖版)
         // -----------------------------------------------------------
         const filters = document.getElementById('filters');
         const galleriesRoot = document.getElementById('galleries-root');
         const lightbox = document.getElementById('lightbox');
         const lightboxContent = document.getElementById('lightbox-content');
         
-        let loadedItems = []; // 存储所有加载成功的图片对象
+        let loadedItems = []; // 存储所有图片数据
         let currentFilter = 'all';
-        let columnsData = [];
+        let columnsDOM = []; // 存储列的 DOM 引用
 
         function initPortfolio() {
             createFilterBtn('all', '全部作品', 'ALL WORKS', true);
             CATEGORIES.forEach(cat => createFilterBtn(cat.id, cat.name, cat.en));
             
-            // 🚀 启动“盲盒”加载
+            // 启动盲盒扫描
             startBlindScan();
         }
 
-        // 创建筛选按钮
         function createFilterBtn(id, zh, en, isActive=false) {
             const btn = document.createElement('div');
             btn.className = `filter-btn ${isActive ? 'active' : ''}`;
@@ -201,18 +203,17 @@
                 document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
                 currentFilter = id;
-                renderLayout();
+                renderLayout(); // 切换分类时重新排布
             };
             filters.appendChild(btn);
         }
 
-        // 创建列容器 (强制 4 列)
         function createColumns() {
             galleriesRoot.innerHTML = '';
-            columnsData = [];
+            columnsDOM = [];
             
             // ⚠️ 强制列数逻辑
-            let colCount = 4; 
+            let colCount = 4; // 电脑 > 1000px
             const w = window.innerWidth;
             if (w <= 600) colCount = 1; 
             else if (w <= 1000) colCount = 2; 
@@ -221,11 +222,10 @@
                 const col = document.createElement('div');
                 col.className = 'masonry-column';
                 galleriesRoot.appendChild(col);
-                columnsData.push(col);
+                columnsDOM.push(col);
             }
         }
 
-        // 开始扫描图片 (这就是你之前缺失的函数！)
         function startBlindScan() {
             createColumns(); // 先建好列
 
@@ -239,36 +239,38 @@
             });
         }
 
-        // 尝试加载图片
         function tryLoadImage(src, cat, index, ext, catOrder) {
             const img = new Image();
             img.src = src;
             
             img.onload = function() {
-                // 加载成功！存入数据
                 const fileKey = `${cat.id}/${index}${ext}`;
                 const customTitle = CUSTOM_TITLES[fileKey];
                 
-                loadedItems.push({
+                // 1. 创建数据对象
+                const item = {
                     src: src,
                     catId: cat.id,
                     catName: cat.name,
-                    catEn: cat.en,
                     title: customTitle || `${cat.en} ${index}`,
                     width: this.width,
                     height: this.height,
                     ratio: this.width / this.height,
-                    catOrder: catOrder, // 用于排序
-                    index: index // 用于排序
-                });
+                    catOrder: catOrder,
+                    index: index,
+                    dom: null // 先占位
+                };
 
-                // 触发重排 (防抖)
+                // 2. 立即创建 DOM 节点 (只创建一次，以后只移动不销毁)
+                item.dom = createCardDOM(item);
+
+                // 3. 存入总表
+                loadedItems.push(item);
+
+                // 4. 触发防抖重排
                 requestLayout();
             };
-
-            img.onerror = function() {
-                // 加载失败，忽略
-            };
+            img.onerror = function() {};
         }
 
         let layoutTimer = null;
@@ -277,36 +279,46 @@
             layoutTimer = setTimeout(renderLayout, 100);
         }
 
-        // 渲染核心
+        // 🌟 核心：无闪烁重排 (Move, Don't Destroy)
         function renderLayout() {
             // 1. 筛选
             let items = (currentFilter === 'all') 
                 ? loadedItems 
                 : loadedItems.filter(item => item.catId === currentFilter);
 
-            // 2. 排序 (强制分组)
+            // 2. 排序 (正序：1, 2, 3...)
             items.sort((a, b) => {
                 if (currentFilter === 'all') {
                     if (a.catOrder !== b.catOrder) return a.catOrder - b.catOrder;
                 }
-                return a.index - b.index; // 正序
+                return a.index - b.index; // 👈 修正为正序
             });
 
-            // 3. 清空列
-            columnsData.forEach(col => col.innerHTML = '');
-            let colHeights = new Array(columnsData.length).fill(0);
+            // 3. 隐藏所有不该显示的
+            loadedItems.forEach(item => {
+                if (!items.includes(item) && item.dom.parentNode) {
+                    item.dom.remove(); // 暂时移除，下次需要时再加回来
+                }
+            });
 
-            // 4. 分发
+            // 4. 智能分发 (只移动 DOM，不销毁)
+            let colHeights = new Array(columnsDOM.length).fill(0); // 记录当前各列高度
+
             items.forEach(item => {
+                // 找最短列
                 let minIndex = 0;
                 for (let i = 1; i < colHeights.length; i++) {
                     if (colHeights[i] < colHeights[minIndex]) minIndex = i;
                 }
 
-                const card = createCardDOM(item);
-                columnsData[minIndex].appendChild(card);
+                // 关键：把 DOM 移动到那一列 (如果已经在里面，浏览器会自动处理，不闪烁)
+                columnsDOM[minIndex].appendChild(item.dom);
                 
-                // 更新高度
+                // 确保显示
+                item.dom.style.opacity = 1;
+                item.dom.style.transform = 'translateY(0)';
+
+                // 更新高度记录
                 colHeights[minIndex] += (1 / item.ratio);
             });
         }
@@ -315,22 +327,30 @@
             const div = document.createElement('div');
             div.className = 'photo-card';
             
+            const isVideo = item.src.match(/\.(mp4|mov)$/i);
+            let mediaHtml = isVideo 
+                ? `<video src="${item.src}" autoplay muted loop playsinline></video><div class="video-badge">VIDEO</div>`
+                : `<img src="${item.src}" alt="${item.title}" loading="lazy">`;
+
             div.innerHTML = `
                 <div class="media-wrapper" style="aspect-ratio: ${item.ratio}">
-                    <img src="${item.src}" alt="${item.title}" loading="lazy">
+                    ${mediaHtml}
                 </div>
                 <div class="card-info">
                     <span class="card-tag">${item.catName}</span>
                     <h3 class="card-title">${item.title}</h3>
                 </div>
             `;
-            div.onclick = () => openLightbox(item.src);
+            div.onclick = () => openLightbox(item.src, isVideo);
             return div;
         }
 
         // 灯箱
-        function openLightbox(src) {
-            lightboxContent.innerHTML = `<img src="${src}">`;
+        function openLightbox(src, isVideo) {
+            let content = isVideo 
+                ? `<video src="${src}" autoplay loop controls playsinline></video>`
+                : `<img src="${src}">`;
+            lightboxContent.innerHTML = content;
             lightbox.classList.add('active');
         }
         function closeLightbox() {
@@ -349,7 +369,7 @@
         });
 
         // =========================================================
-        // 🌌 粒子动画引擎
+        // 🌌 粒子动画引擎 (完整版)
         // =========================================================
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
