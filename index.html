@@ -289,7 +289,7 @@
                 if (currentFilter === 'all') {
                     if (a.catOrder !== b.catOrder) return a.catOrder - b.catOrder;
                 }
-                return b.index - a.index; // 倒序
+                return a.index - b.index; // 正序
             });
 
             // 3. 清空列
